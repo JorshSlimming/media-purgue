@@ -97,7 +97,7 @@ export default function Swiper({ file, onKeep, onDelete }: Props) {
           >
             {isVideo ? (
               <video
-                src={`file://${file.ruta_original}`}
+                src={`media://${file.ruta_original}`}
                 controls
                 autoPlay
                 muted
@@ -106,7 +106,7 @@ export default function Swiper({ file, onKeep, onDelete }: Props) {
               />
             ) : (
               <img
-                src={`file://${file.ruta_original}`}
+                src={`media://${file.ruta_original}`}
                 alt={file.nombre}
                 className="max-h-full max-w-full object-contain pointer-events-none"
               />

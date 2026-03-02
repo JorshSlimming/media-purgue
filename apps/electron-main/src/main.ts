@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, protocol, net } from 'electron'
 import { dialog } from 'electron'
 import path from 'path'
 import { BrowserWindow as BW } from 'electron'
@@ -43,6 +43,12 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  protocol.handle('media', (request) => {
+    // request.url is "media://C:/foo/bar.jpg" or "media:///Users/..."
+    const filePath = decodeURIComponent(request.url.replace(/^media:\/\//i, ''))
+    return net.fetch('file://' + filePath)
+  })
+
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

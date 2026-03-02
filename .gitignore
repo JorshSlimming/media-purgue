@@ -27,6 +27,8 @@ tests/e2e/fixtures/
 playwright-report/
 test-results/
 blob-report/
+e2e_output.txt
+test-launch.js
 
 # OS specific
 Thumbs.db

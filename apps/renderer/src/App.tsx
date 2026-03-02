@@ -23,6 +23,7 @@ export default function App() {
   const [modalCounts, setModalCounts] = useState<{ images: number; videos: number } | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [lastError, setLastError] = useState<string | null>(null)
+  const [showLogs, setShowLogs] = useState(false)
 
   // Modals stats state
   const [loteStats, setLoteStats] = useState<{ id: string | number, conservados: number, eliminados: number } | null>(null)
@@ -41,12 +42,34 @@ export default function App() {
         setStatusMsg(null)
         const counts = info.counts || { images: 0, videos: 0 }
         setModalCounts(counts)
-        setModalVisible(true)
+        // Set default config locally to display summary
+        if (!pendingUsuarioConfig) {
+          setPendingUsuarioConfig({
+            tamano_lote_imagenes: 100,
+            tamano_lote_videos: 30,
+            criterio: 'fecha_creacion',
+            nombre_biblioteca: 'Biblioteca_Final',
+            ubicacion_biblioteca: p,
+            incluir_subcarpetas: true
+          })
+        }
         const st = await listStaging(p)
         setStagingInfo(st)
       } catch (err: any) {
         setStatusMsg('Error inspeccionando: ' + (err.message || String(err)))
       }
+    }
+  }
+
+  async function handleStartProcess() {
+    setStatusMsg('Generando lotes en segundo plano...')
+    try {
+      setScanResult({ created: [], counts: modalCounts })
+      const res = await scanFolder({ rootPath, includeSubfolders: pendingUsuarioConfig?.incluir_subcarpetas ?? true, usuarioConfig: pendingUsuarioConfig })
+      setScanResult(res)
+      setStatusMsg(null)
+    } catch (err: any) {
+      setStatusMsg('Error generando lotes: ' + (err.message || String(err)))
     }
   }
 
@@ -158,12 +181,12 @@ export default function App() {
       </header>
 
       <main className="p-6 max-w-7xl mx-auto grid grid-cols-12 gap-8">
-        <section className="col-span-8 flex flex-col gap-6">
+        <section className={`transition-all duration-300 ${showLogs ? 'col-span-8' : 'col-span-12 max-w-4xl mx-auto w-full'} flex flex-col gap-6`}>
 
-          {!loteData && (
+          {!scanResult && !loteData && (
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold mb-6 text-gray-800">1. Seleccionar Origen</h2>
-              <div className="flex gap-3">
+              <div className="flex gap-3 mb-8">
                 <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span className="text-gray-400">📁</span>
@@ -174,6 +197,36 @@ export default function App() {
                   Seleccionar
                 </button>
               </div>
+
+              {rootPath && pendingUsuarioConfig && (
+                <div className="animate-fadeIn">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                      <span>⚙️</span> Configuración actual
+                    </h3>
+                    <button onClick={() => setModalVisible(true)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
+                      Modificar
+                    </button>
+                  </div>
+                  <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 text-sm text-gray-700 grid grid-cols-2 gap-y-3 mb-8 shadow-inner">
+                    <div className="flex flex-col"><span className="text-gray-500 font-medium">Tamaño de lote</span> <span className="font-semibold">{pendingUsuarioConfig.tamano_lote_imagenes} imágenes | {pendingUsuarioConfig.tamano_lote_videos} videos</span></div>
+                    <div className="flex flex-col"><span className="text-gray-500 font-medium">Criterio</span> <span className="font-semibold">{pendingUsuarioConfig.criterio === 'fecha_creacion' ? 'Fecha de creación' : 'Tamaño'}</span></div>
+                    <div className="flex flex-col"><span className="text-gray-500 font-medium">Nombre biblioteca</span> <span className="font-semibold truncate">{pendingUsuarioConfig.nombre_biblioteca}</span></div>
+                    <div className="flex flex-col"><span className="text-gray-500 font-medium">Ubicación</span> <span className="font-semibold truncate" title={pendingUsuarioConfig.ubicacion_biblioteca}>{pendingUsuarioConfig.ubicacion_biblioteca === rootPath ? '(misma carpeta de origen)' : pendingUsuarioConfig.ubicacion_biblioteca}</span></div>
+                    <div className="flex flex-col"><span className="text-gray-500 font-medium">Incluir subcarpetas</span> <span className="font-semibold">{pendingUsuarioConfig.incluir_subcarpetas ? 'Sí' : 'No'}</span></div>
+                    <div className="flex flex-col"><span className="text-gray-500 font-medium">Archivos estimados</span> <span className="font-semibold text-indigo-600">{modalCounts?.images} img / {modalCounts?.videos} vid</span></div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <p className="text-sm text-gray-500 flex-1 pr-6">
+                      📍 La biblioteca final se creará en la ubicación configurada. Archivos originales serán eliminados si los rechazas.
+                    </p>
+                    <button onClick={handleStartProcess} className="px-8 py-3.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transition-colors hover:scale-105 active:scale-95 flex items-center gap-2 flex-shrink-0">
+                      ▶ Iniciar proceso
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {statusMsg && (
                 <div className="mt-4 p-4 bg-blue-50 text-blue-800 text-sm font-medium rounded-xl flex items-center gap-2">
@@ -221,8 +274,8 @@ export default function App() {
                 </h2>
 
                 <div className="flex gap-3">
-                  <button onClick={() => setLoteData(null)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 font-medium rounded-lg transition-colors">
-                    Pausar / Volver
+                  <button onClick={() => setLoteData(null)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 font-medium rounded-lg transition-colors border border-gray-200">
+                    Atrás / Pausar
                   </button>
                   <button onClick={handleCloseLote} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow transition-colors">
                     Finalizar Lote
@@ -241,13 +294,13 @@ export default function App() {
                   />
 
                   <div className="flex items-center justify-center gap-4 mt-6">
-                    <button onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0} className={`p-2 rounded-full border-2 ${currentIndex === 0 ? 'text-gray-300 border-gray-200' : 'text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'} transition-colors`}>
+                    <button onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0} className={`p-2 rounded-full border-2 ${currentIndex === 0 ? 'text-gray-300 border-gray-200' : 'text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'} transition-colors bg-white`}>
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
                     </button>
                     <span className="text-gray-500 font-semibold min-w-[80px] text-center bg-white px-4 py-1.5 rounded-full border shadow-sm">
                       {currentIndex + 1} / {loteData.archivos.length}
                     </span>
-                    <button onClick={() => setCurrentIndex(i => Math.min(i + 1, loteData.archivos.length - 1))} disabled={currentIndex === loteData.archivos.length - 1} className={`p-2 rounded-full border-2 ${currentIndex === loteData.archivos.length - 1 ? 'text-gray-300 border-gray-200' : 'text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'} transition-colors`}>
+                    <button onClick={() => setCurrentIndex(i => Math.min(i + 1, loteData.archivos.length - 1))} disabled={currentIndex === loteData.archivos.length - 1} className={`p-2 rounded-full border-2 ${currentIndex === loteData.archivos.length - 1 ? 'text-gray-300 border-gray-200' : 'text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'} transition-colors bg-white`}>
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
                     </button>
                   </div>
@@ -257,43 +310,54 @@ export default function App() {
           )}
         </section>
 
-        <aside className="col-span-4 space-y-6">
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[350px]">
-            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="text-gray-400">⚡</span> Progreso en vivo
-            </h4>
-            <div className="flex-1 overflow-auto bg-gray-900 rounded-xl p-3 text-xs text-green-400 font-mono shadow-inner shadow-black/20">
-              {useProgressStore.getState().messages.map((m, i) => (
-                <div key={i} className="py-1 break-words opacity-90"><span className="text-gray-500">[{m.ts.split('T')[1].split('.')[0]}]</span> {JSON.stringify(m.payload)}</div>
-              ))}
-              {useProgressStore.getState().messages.length === 0 && (
-                <div className="text-gray-600 italic">Esperando eventos...</div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="text-gray-400">📝</span> Auditoría
-            </h4>
-            <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 h-32 overflow-auto">
-              <LogViewer mpRoot={rootPath ? `${rootPath}/.media-purgue` : ''} />
-            </div>
-          </div>
-
-          {stagingInfo && stagingInfo.files.length > 0 && (
-            <div className="bg-orange-50 p-5 rounded-2xl shadow-sm border border-orange-200">
-              <h4 className="font-bold text-orange-800 mb-2 flex items-center gap-2">
-                <span>⚠️</span> Recuperación (.staging)
+        {showLogs && (
+          <aside className="col-span-4 space-y-6 animate-fadeIn">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[350px]">
+              <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="text-gray-400">⚡</span> Progreso en vivo
               </h4>
-              <p className="text-xs text-orange-600 mb-3">Hay archivos pendientes de un cierre interrumpido.</p>
-              <button onClick={() => revealPath(stagingInfo.staging)} className="w-full py-2 bg-white text-orange-700 font-semibold rounded-lg border border-orange-300 hover:bg-orange-100 transition-colors text-sm">
-                Abrir carpeta .staging
-              </button>
+              <div className="flex-1 overflow-auto bg-gray-900 rounded-xl p-3 text-xs text-green-400 font-mono shadow-inner shadow-black/20">
+                {useProgressStore.getState().messages.map((m, i) => (
+                  <div key={i} className="py-1 break-words opacity-90"><span className="text-gray-500">[{m.ts.split('T')[1].split('.')[0]}]</span> {JSON.stringify(m.payload)}</div>
+                ))}
+                {useProgressStore.getState().messages.length === 0 && (
+                  <div className="text-gray-600 italic">Esperando eventos...</div>
+                )}
+              </div>
             </div>
-          )}
-        </aside>
+
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+              <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="text-gray-400">📝</span> Auditoría
+              </h4>
+              <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 h-32 overflow-auto">
+                <LogViewer mpRoot={rootPath ? `${rootPath}/.media-purgue` : ''} />
+              </div>
+            </div>
+
+            {stagingInfo && stagingInfo.files.length > 0 && (
+              <div className="bg-orange-50 p-5 rounded-2xl shadow-sm border border-orange-200">
+                <h4 className="font-bold text-orange-800 mb-2 flex items-center gap-2">
+                  <span>⚠️</span> Recuperación (.staging)
+                </h4>
+                <p className="text-xs text-orange-600 mb-3">Hay archivos pendientes de un cierre interrumpido.</p>
+                <button onClick={() => revealPath(stagingInfo.staging)} className="w-full py-2 bg-white text-orange-700 font-semibold rounded-lg border border-orange-300 hover:bg-orange-100 transition-colors text-sm">
+                  Abrir carpeta .staging
+                </button>
+              </div>
+            )}
+          </aside>
+        )}
       </main>
+
+      <div className="fixed bottom-6 right-6">
+        <button
+          onClick={() => setShowLogs(s => !s)}
+          className={`shadow-lg px-4 py-2 rounded-full font-semibold text-sm transition-colors border ${showLogs ? 'bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+        >
+          {showLogs ? 'Ocultar logs técnicos' : '🛠️ Ver detalles técnicos'}
+        </button>
+      </div>
 
       <ConfigModal
         visible={modalVisible}
@@ -303,15 +367,8 @@ export default function App() {
         onSelectFolder={selectFolder}
         onConfirm={async (usuarioConfig: any) => {
           setModalVisible(false)
-          setStatusMsg('Generando lotes en segundo plano...')
-          try {
-            setScanResult({ created: [], counts: modalCounts })
-            const res = await scanFolder({ rootPath, includeSubfolders: includeSub, usuarioConfig })
-            setScanResult(res)
-            setStatusMsg(null)
-          } catch (err: any) {
-            setStatusMsg('Error generando lotes: ' + (err.message || String(err)))
-          }
+          setPendingUsuarioConfig(usuarioConfig)
+          // Just save it. "Iniciar proceso" handles the actual generation now!
         }}
       />
 
