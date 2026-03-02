@@ -50,3 +50,5 @@ test_output.txt
 test-launch.js
 e2e_output.txt
 
+.kiro/
+

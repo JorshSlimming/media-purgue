@@ -1,7 +1,11 @@
 import { app, BrowserWindow, ipcMain, shell, protocol, net } from 'electron'
 import { dialog } from 'electron'
 import path from 'path'
+import { pathToFileURL } from 'url'
 import { BrowserWindow as BW } from 'electron'
+import { Readable } from 'stream'
+import ffmpegFluent from 'fluent-ffmpeg'
+import ffmpegStatic from 'ffmpeg-static'
 import { scanMediaFiles, ensureDir, writeJsonAtomic, copyFile, moveFile, unlinkFile } from './fsManager'
 import { readJson } from './fsManager'
 import { readLote, writeLote, Lote } from './jsonManager'
@@ -10,6 +14,25 @@ import { writeLogJSON, readLogJSON, listLogs } from './logger'
 import fs from 'fs'
 import fsExtra from 'fs-extra'
 import os from 'os'
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'media',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true,
+      corsEnabled: true
+    }
+  }
+])
+
+if (ffmpegStatic) {
+  ffmpegFluent.setFfmpegPath(ffmpegStatic)
+}
+
+const VIDEO_TRANSCODE_EXTS = new Set(['.mp4', '.mov', '.avi', '.mkv'])
 
 function sendProgress(payload: any) {
   const win = BW.getAllWindows()[0]
@@ -43,10 +66,70 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  protocol.handle('media', (request) => {
-    // request.url is "media://C:/foo/bar.jpg" or "media:///Users/..."
-    const filePath = decodeURIComponent(request.url.replace(/^media:\/\//i, ''))
-    return net.fetch('file://' + filePath)
+  protocol.handle('media', async (request) => {
+    try {
+      const parsed = new URL(request.url)
+      const queryPath = parsed.searchParams.get('path')
+      const encodedPath = request.url.replace(/^media:\/\//i, '')
+      let filePath = queryPath ? decodeURIComponent(queryPath) : decodeURIComponent(encodedPath)
+
+      if (/^\/[a-zA-Z]:[\\/]/.test(filePath)) {
+        filePath = filePath.slice(1)
+      }
+
+      if (process.platform === 'win32') {
+        filePath = filePath.replace(/\//g, '\\')
+      }
+
+      if (!fs.existsSync(filePath)) {
+        return new Response('File not found', { status: 404 })
+      }
+
+      const ext = path.extname(filePath).toLowerCase()
+
+      if (VIDEO_TRANSCODE_EXTS.has(ext)) {
+        // Transcode proprietary codec (H.264/AAC) → WebM VP8/Vorbis on the fly
+        // because Electron's Chromium build doesn't include H.264 licence
+        const nodeStream = ffmpegFluent(filePath)
+          .format('webm')
+          .videoCodec('libvpx')
+          .audioCodec('libvorbis')
+          .outputOptions(['-deadline realtime', '-cpu-used 8', '-b:v 1500k'])
+          .on('error', (err: Error) => {
+            console.error('[media protocol] ffmpeg transcode error:', err.message)
+          })
+          .pipe() as NodeJS.ReadableStream
+
+        const webStream = new ReadableStream({
+          start(controller) {
+            nodeStream.on('data', (chunk: Buffer) => controller.enqueue(chunk))
+            nodeStream.on('end', () => controller.close())
+            nodeStream.on('error', (err: Error) => controller.error(err))
+          },
+          cancel() {
+            (nodeStream as Readable).destroy()
+          }
+        })
+
+        return new Response(webStream, {
+          status: 200,
+          headers: {
+            'Content-Type': 'video/webm',
+            'Cache-Control': 'no-cache'
+          }
+        })
+      }
+
+      // Images and native WebM: serve directly via file:// with range support
+      const fileUrl = pathToFileURL(filePath).toString()
+      return net.fetch(fileUrl, {
+        method: request.method,
+        headers: request.headers
+      })
+    } catch (error: any) {
+      console.error('[media protocol] Error:', error)
+      return new Response(`Error: ${error.message}`, { status: 500 })
+    }
   })
 
   createWindow()

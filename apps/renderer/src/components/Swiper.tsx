@@ -8,6 +8,7 @@ type Props = {
 
 export default function Swiper({ file, onKeep, onDelete }: Props) {
   const isVideo = /\.(mp4|mov|webm|mkv|avi)$/i.test(file.nombre)
+  const mediaSrc = `media://local/file?path=${encodeURIComponent(file.ruta_original)}`
   const [tx, setTx] = useState(0)
   const [dragging, setDragging] = useState(false)
   const startX = useRef<number | null>(null)
@@ -97,16 +98,30 @@ export default function Swiper({ file, onKeep, onDelete }: Props) {
           >
             {isVideo ? (
               <video
-                src={`media://${file.ruta_original}`}
+                src={mediaSrc}
                 controls
                 autoPlay
                 muted
                 loop
+                playsInline
+                preload="metadata"
                 className="max-h-full max-w-full object-contain pointer-events-auto"
+                onError={(e) => {
+                  const video = e.target as HTMLVideoElement
+                  console.error('Video error:', {
+                    error: video.error,
+                    code: video.error?.code,
+                    message: video.error?.message,
+                    networkState: video.networkState,
+                    readyState: video.readyState,
+                    src: video.src
+                  })
+                }}
+                onLoadedMetadata={() => console.log('Video metadata loaded')}
               />
             ) : (
               <img
-                src={`media://${file.ruta_original}`}
+                src={mediaSrc}
                 alt={file.nombre}
                 className="max-h-full max-w-full object-contain pointer-events-none"
               />
