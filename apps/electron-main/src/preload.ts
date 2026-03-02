@@ -14,5 +14,8 @@ contextBridge.exposeInMainWorld('mp', {
     const listener = (_: any, data: any) => cb(data)
     ipcRenderer.on('mp:progress', listener)
     return () => ipcRenderer.removeListener('mp:progress', listener)
-  }
+  },
+  finalizeLibrary: (root: string) => ipcRenderer.invoke('mp:finalizeLibrary', root),
+  listLogs: (root: string) => ipcRenderer.invoke('mp:listLogs', root),
+  readLog: (fullPathOrMpRoot: string, fileName?: string) => ipcRenderer.invoke('mp:readLog', fullPathOrMpRoot, fileName)
 })

@@ -60,9 +60,14 @@ export async function revealPath(p: string) {
 export function onProgress(cb: (data: any) => void) {
   if (!has('onProgress')) {
     // running in browser/dev server - provide noop unsubscribe
-    return () => {}
+    return () => { }
   }
   return getMp().onProgress(cb)
+}
+
+export async function finalizeLibrary(mpRoot: string) {
+  if (!has('finalizeLibrary')) return Promise.reject(new Error('IPC not available'))
+  return getMp().finalizeLibrary(mpRoot)
 }
 
 // convenience wrapper to read a log JSON file by full path
