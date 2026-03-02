@@ -22,3 +22,19 @@ coverage-
 apps/**/dist/
 packages/**/dist/
 tests/e2e/fixtures/
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+
+# OS specific
+Thumbs.db
+ehthumbs.db
+.Trashes
+
+# npm / yarn
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

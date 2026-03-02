@@ -19,8 +19,12 @@ function sendProgress(payload: any) {
 // Development: disable GPU to avoid Windows Chromium cache/GPU disk errors
 app.commandLine.appendSwitch('disable-gpu')
 app.commandLine.appendSwitch('disable-gpu-compositing')
-// Force userData to a project-local folder to ensure write permissions during dev
-app.setPath('userData', path.join(process.cwd(), '.electron-user-data'))
+// Force userData to a project-local folder to ensure write permissions during dev, unless running E2E
+if (process.env.MP_E2E) {
+  app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'mp-e2e-profile-')))
+} else {
+  app.setPath('userData', path.join(process.cwd(), '.electron-user-data'))
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -83,7 +87,7 @@ ipcMain.handle('mp:scanFolder', async (evt, opts) => {
   // emit progress: scanned counts
   try {
     sendProgress({ type: 'scan:counts', counts: { images: scanned.images.length, videos: scanned.videos.length } })
-  } catch (_) {}
+  } catch (_) { }
 
   // create simple lotes: split arrays into chunks and write them progressively
   function chunk<T>(arr: T[], size: number) {
@@ -121,7 +125,7 @@ ipcMain.handle('mp:scanFolder', async (evt, opts) => {
       }
       await writeLote(lotePath, lote)
       created.push(lotePath)
-      try { sendProgress({ type: 'scan:loteCreated', lotePath, loteId: idCounter }) } catch (_) {}
+      try { sendProgress({ type: 'scan:loteCreated', lotePath, loteId: idCounter }) } catch (_) { }
       idCounter++
       // yield to event loop to avoid blocking heavy scans
       await new Promise(r => setTimeout(r, 0))
@@ -132,7 +136,7 @@ ipcMain.handle('mp:scanFolder', async (evt, opts) => {
   await makeLotes(imageChunks as any, 'imagenes')
   await makeLotes(videoChunks as any, 'videos')
 
-  try { sendProgress({ type: 'scan:done', createdCount: created.length }) } catch (_) {}
+  try { sendProgress({ type: 'scan:done', createdCount: created.length }) } catch (_) { }
   return { created, counts: { images: scanned.images.length, videos: scanned.videos.length } }
 })
 
