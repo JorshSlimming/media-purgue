@@ -40,3 +40,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Local logs
+compile_error.txt
+test_output.txt
+test_output_clean.txt
+test_results.txt
+test_output.txt
+test-launch.js
+e2e_output.txt
+
