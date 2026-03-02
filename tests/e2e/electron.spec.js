@@ -92,7 +92,11 @@ if (!process.env.VITEST) {
 
     // launch electron via playwright with MP_RENDERER_URL to point to our static server
     const { _electron: electron } = require('playwright')
-    const electronApp = await electron.launch({ executablePath: require('electron'), args: ['.'], env: { ...(process.env || {}), MP_RENDERER_URL: `http://localhost:${port}/`, MP_E2E: 'true' } })
+    const electronApp = await electron.launch({
+      executablePath: require('electron'),
+      args: ['.', '--no-sandbox', '--disable-dev-shm-usage'],
+      env: { ...(process.env || {}), MP_RENDERER_URL: `http://localhost:${port}/`, MP_E2E: 'true' }
+    })
     try {
       const page = await electronApp.firstWindow()
       await page.waitForLoadState('domcontentloaded')

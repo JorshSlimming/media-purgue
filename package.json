@@ -16,7 +16,6 @@
     "package": "electron-builder",
     "test": "vitest --run",
     "test:coverage": "vitest --run --coverage",
-    "e2e": "node ./scripts/e2e/run-e2e.js",
     "test:e2e": "npx playwright test tests/e2e --config=tests/e2e/playwright.config.js"
   },
   "workspaces": [
