@@ -1,0 +1,43 @@
+{
+  "name": "media-purgue",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron + React app to purge media via batch JSON workflows (scaffold)",
+  "main": "apps/electron-main/dist/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:main:watch\" \"npm run dev:electron\"",
+    "dev:renderer": "cd apps/renderer && vite",
+    "dev:main:watch": "tsc -p apps/electron-main/tsconfig.json -w",
+    "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "build": "npm run build:renderer && npm run build:main",
+    "build:renderer": "echo \"Build renderer (configure vite)\"",
+    "build:main": "tsc -p apps/electron-main/tsconfig.json",
+    "start": "electron .",
+    "package": "electron-builder",
+    "test": "vitest",
+    "e2e": "node ./scripts/e2e/run-e2e.js",
+    "test:e2e": "npx playwright test tests/e2e --config=tests/e2e/playwright.config.js"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.0.0",
+    "electron": "^26.0.0",
+    "electron-builder": "^24.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0",
+    "wait-on": "^7.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "vitest": "^1.0.0",
+    "playwright": "^1.37.0",
+    "@playwright/test": "^1.37.0"
+  },
+  "dependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "zustand": "^4.0.0",
+    "fs-extra": "^11.0.0"
+  }
+}

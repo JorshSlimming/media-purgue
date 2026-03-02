@@ -1,0 +1,24 @@
+{
+  "lote_id": 1,
+  "tipo": "imagenes",
+  "criterio": "fecha_creacion",
+  "fecha_creacion": "2024-01-01T10:00:00Z",
+  "archivos": [
+    {
+      "nombre": "vacaciones.jpg",
+      "ruta_original": "C:/Users/Usuario/Fotos/vacaciones.jpg",
+      "tamano_bytes": 4200000,
+      "fecha_modificacion": "2023-08-15T14:30:00Z",
+      "estado": "pendiente",
+      "orden": 1
+    },
+    {
+      "nombre": "cumple.png",
+      "ruta_original": "C:/Users/Usuario/Fotos/cumple.png",
+      "tamano_bytes": 2100000,
+      "fecha_modificacion": "2022-05-10T10:10:00Z",
+      "estado": "pendiente",
+      "orden": 2
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "tamano_lote_imagenes": 100,
+  "tamano_lote_videos": 30,
+  "criterio": "fecha_creacion",
+  "nombre_biblioteca": "Biblioteca_Final",
+  "ubicacion_biblioteca": "../",
+  "incluir_subcarpetas": true
+}
