@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
-import { scanFolder, readLote, updateArchivoEstado, closeLote, inspectFolder, selectFolder } from './ipc'
-import { onProgress } from './ipc'
+import { scanFolder, readLote, updateArchivoEstado, closeLote, inspectFolder, selectFolder, listStaging, revealPath, onProgress } from './ipc'
 import ConfigModal from './components/ConfigModal'
 import LogViewer from './components/LogViewer'
 import Swiper from './components/Swiper'

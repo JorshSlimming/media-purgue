@@ -3,51 +3,76 @@ export type ScanOpts = {
   includeSubfolders?: boolean
   usuarioConfig?: any
 }
+function getMp() {
+  return (window as any).mp
+}
+
+function has(name: string) {
+  const m = getMp()
+  return !!m && typeof m[name] === 'function'
+}
 
 export async function ping(): Promise<string> {
-  return (window as any).mp.ping()
+  if (!has('ping')) return Promise.resolve('mp-not-available')
+  return getMp().ping()
 }
 
 export async function scanFolder(opts: ScanOpts) {
-  return (window as any).mp.scanFolder(opts)
+  if (!has('scanFolder')) return Promise.reject(new Error('IPC not available'))
+  return getMp().scanFolder(opts)
 }
 
 export async function inspectFolder(opts: { rootPath: string; includeSubfolders?: boolean }) {
-  return (window as any).mp.inspectFolder(opts)
+  if (!has('inspectFolder')) return Promise.reject(new Error('IPC not available'))
+  return getMp().inspectFolder(opts)
 }
 
 export async function selectFolder() {
-  return (window as any).mp.selectFolder()
+  if (!has('selectFolder')) return Promise.reject(new Error('IPC not available'))
+  return getMp().selectFolder()
 }
 
 export async function readLote(lotePath: string) {
-  return (window as any).mp.readLote(lotePath)
+  if (!has('readLote')) return Promise.reject(new Error('IPC not available'))
+  return getMp().readLote(lotePath)
 }
 
 export async function updateArchivoEstado(args: { lotePath: string; orden: number; nuevoEstado: 'pendiente' | 'conservar' | 'eliminar' }) {
-  return (window as any).mp.updateArchivoEstado(args)
+  if (!has('updateArchivoEstado')) return Promise.reject(new Error('IPC not available'))
+  return getMp().updateArchivoEstado(args)
 }
 
 export async function closeLote(lotePath: string) {
-  return (window as any).mp.closeLote(lotePath)
+  if (!has('closeLote')) return Promise.reject(new Error('IPC not available'))
+  return getMp().closeLote(lotePath)
 }
 
 export async function listStaging(root: string) {
-  return (window as any).mp.listStaging(root)
+  if (!has('listStaging')) return Promise.reject(new Error('IPC not available'))
+  return getMp().listStaging(root)
 }
 
 export async function revealPath(p: string) {
-  return (window as any).mp.revealPath(p)
+  if (!has('revealPath')) return Promise.reject(new Error('IPC not available'))
+  return getMp().revealPath(p)
 }
 
 export function onProgress(cb: (data: any) => void) {
-  return (window as any).mp.onProgress(cb)
+  if (!has('onProgress')) {
+    // running in browser/dev server - provide noop unsubscribe
+    return () => {}
+  }
+  return getMp().onProgress(cb)
 }
 
 // convenience wrapper to read a log JSON file by full path
 export async function readLog(fullPathOrMpRoot: string, fileName?: string) {
-  // if two args provided (mpRoot, filename) call readLog via preload
-  if (fileName) return (window as any).mp.readLog(fullPathOrMpRoot, fileName)
-  // otherwise assume full path and call readLog directly exposed in preload
-  return (window as any).mp.readLog(null, fullPathOrMpRoot)
+  if (!has('readLog')) return Promise.reject(new Error('IPC not available'))
+  if (fileName) return getMp().readLog(fullPathOrMpRoot, fileName)
+  return getMp().readLog(null, fullPathOrMpRoot)
+}
+
+export async function listLogs(mpRoot: string) {
+  if (!has('listLogs')) return Promise.reject(new Error('IPC not available'))
+  return getMp().listLogs(mpRoot)
 }

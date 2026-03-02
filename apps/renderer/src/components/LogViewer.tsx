@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { listLogs, readLog } from '../ipc'
 
 export default function LogViewer({ mpRoot }: { mpRoot: string }) {
   const [logs, setLogs] = useState<string[]>([])
@@ -7,8 +8,12 @@ export default function LogViewer({ mpRoot }: { mpRoot: string }) {
 
   useEffect(() => {
     async function load() {
-      const names = await (window as any).mp.listLogs(mpRoot)
-      setLogs(names || [])
+      try {
+        const names = await listLogs(mpRoot)
+        setLogs(names || [])
+      } catch (err) {
+        setLogs([])
+      }
     }
     if (mpRoot) load()
   }, [mpRoot])
@@ -16,8 +21,12 @@ export default function LogViewer({ mpRoot }: { mpRoot: string }) {
   useEffect(() => {
     async function read() {
       if (!selected) return
-      const c = await (window as any).mp.readLog(mpRoot, selected)
-      setContent(c)
+      try {
+        const c = await readLog(mpRoot, selected)
+        setContent(c)
+      } catch (err) {
+        setContent({ error: (err as any).message || String(err) })
+      }
     }
     read()
   }, [selected, mpRoot])
