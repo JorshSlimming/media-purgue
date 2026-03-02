@@ -1,10 +1,12 @@
-const { test, expect } = require('@playwright/test')
-const { spawn, spawnSync } = require('child_process')
-const path = require('path')
-const fs = require('fs')
-const waitOn = require('wait-on')
+// Skip running Playwright tests when executed under Vitest (which would import this file)
+if (!process.env.VITEST) {
+  const { test, expect } = require('@playwright/test')
+  const { spawn, spawnSync } = require('child_process')
+  const path = require('path')
+  const fs = require('fs')
+  const waitOn = require('wait-on')
 
-test('scan and close lote via Electron preload API', async () => {
+  test('scan and close lote via Electron preload API', async () => {
   const repoRoot = process.cwd()
   const fixtureDir = path.join(repoRoot, 'tests', 'e2e', 'fixtures')
   fs.mkdirSync(fixtureDir, { recursive: true })
@@ -128,4 +130,8 @@ test('scan and close lote via Electron preload API', async () => {
     try { server.close() } catch (e) {}
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) {}
   }
-})
+  })
+} else {
+  // exported as noop when running under Vitest
+  module.exports = {}
+}

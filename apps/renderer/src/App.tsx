@@ -108,70 +108,111 @@ export default function App() {
   }, [addMessage])
 
   return (
-    <div style={{ padding: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <img src="/logo.png" alt="Media Purgue" style={{ width: 48, height: 48, objectFit: 'contain' }} />
-        <h1 style={{ margin: 0 }}>Media Purgue — Demo UI</h1>
-      </div>
-
-      <div style={{ marginBottom: 12 }}>
-        <label>Carpeta raíz: </label>
-        <input value={rootPath} readOnly style={{ width: 400 }} placeholder="Selecciona una carpeta..." />
-        <button onClick={handleSelectFolder} style={{ marginLeft: 8 }}>Seleccionar...</button>
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label>
-          <input type="checkbox" checked={includeSub} onChange={e => setIncludeSub(e.target.checked)} /> Incluir subcarpetas
-        </label>
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <button onClick={handleScan}>Iniciar escaneo y generar lotes (demo)</button>
-      </div>
-
-      {statusMsg && <div><strong>{statusMsg}</strong></div>}
-
-      {scanResult && (
-        <div style={{ marginTop: 16 }}>
-          <h3>Resultados</h3>
-          <div>Imágenes detectadas: {scanResult.counts?.images ?? 0}</div>
-          <div>Videos detectados: {scanResult.counts?.videos ?? 0}</div>
-          <h4>Lotes creados</h4>
-          <ul>
-            {scanResult.created.map((p: string) => (
-              <li key={p}>
-                <button onClick={() => openLote(p)} style={{ marginRight: 8 }}>Abrir</button>
-                {p}
-              </li>
-            ))}
-          </ul>
+    <div className="min-h-screen bg-gray-50 text-gray-900 p-6">
+      <header className="flex items-center gap-4 mb-6">
+        <img src="/logo.png" alt="Media Purgue" className="w-12 h-12 object-contain" />
+        <div>
+          <h1 className="text-2xl font-semibold">Media Purgue</h1>
+          <p className="text-sm text-gray-600">Revisión por lotes — demo</p>
         </div>
-      )}
+      </header>
 
-      {loteData && (
-        <div style={{ marginTop: 16 }}>
-          <h3>Lote {loteData.lote_id} — {loteData.tipo}</h3>
-          <div>Archivos:</div>
-          <div>
-            {loteData.archivos.length > 0 && (
-              <Swiper file={loteData.archivos[currentIndex]} onKeep={async () => { await toggleEstado(loteData.archivos[currentIndex].orden, 'conservar'); setCurrentIndex(i => Math.min(i+1, loteData.archivos.length-1)) }} onDelete={async () => { await toggleEstado(loteData.archivos[currentIndex].orden, 'eliminar'); setCurrentIndex(i => Math.min(i+1, loteData.archivos.length-1)) }} />
-            )}
-            <div style={{ marginTop: 8 }}>
-              <button onClick={() => setCurrentIndex(i => Math.max(0, i-1))} disabled={currentIndex===0}>Anterior</button>
-              <span style={{ margin: '0 8px' }}>{currentIndex+1}/{loteData.archivos.length}</span>
-              <button onClick={() => setCurrentIndex(i => Math.min(i+1, loteData.archivos.length-1))} disabled={currentIndex===loteData.archivos.length-1}>Siguiente</button>
+      <main className="grid grid-cols-12 gap-6">
+        <section className="col-span-7 bg-white p-6 rounded-lg shadow-sm">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">Carpeta raíz</label>
+            <div className="mt-2 flex items-center gap-2">
+              <input value={rootPath} readOnly placeholder="Selecciona una carpeta..." className="flex-1 border rounded px-3 py-2 bg-gray-50" />
+              <button onClick={handleSelectFolder} className="px-3 py-2 bg-indigo-600 text-white rounded">Seleccionar</button>
+            </div>
+            <label className="inline-flex items-center gap-2 mt-3 text-sm">
+              <input type="checkbox" checked={includeSub} onChange={e => setIncludeSub(e.target.checked)} className="form-checkbox" />
+              <span>Incluir subcarpetas</span>
+            </label>
+          </div>
+
+          <div className="mb-4">
+            <button onClick={handleScan} className="px-4 py-2 bg-green-600 text-white rounded">Iniciar escaneo</button>
+          </div>
+
+          {statusMsg && <div className="mb-4 text-sm text-gray-700 font-medium">{statusMsg}</div>}
+
+          {scanResult && (
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold">Resultados</h3>
+              <div className="mt-2 text-sm text-gray-700">Imágenes detectadas: {scanResult.counts?.images ?? 0}</div>
+              <div className="text-sm text-gray-700">Videos detectados: {scanResult.counts?.videos ?? 0}</div>
+
+              <h4 className="mt-4 font-medium">Lotes creados</h4>
+              <ul className="mt-2 space-y-2">
+                {scanResult.created.map((p: string) => (
+                  <li key={p} className="flex items-center gap-2">
+                    <button onClick={() => openLote(p)} className="px-2 py-1 bg-indigo-600 text-white rounded">Abrir</button>
+                    <span className="text-sm text-gray-600 truncate">{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {loteData && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold">Lote {loteData.lote_id} — {loteData.tipo}</h3>
+              <div className="mt-3">
+                {loteData.archivos.length > 0 && (
+                  <div>
+                    <Swiper file={loteData.archivos[currentIndex]} onKeep={async () => { await toggleEstado(loteData.archivos[currentIndex].orden, 'conservar'); setCurrentIndex(i => Math.min(i+1, loteData.archivos.length-1)) }} onDelete={async () => { await toggleEstado(loteData.archivos[currentIndex].orden, 'eliminar'); setCurrentIndex(i => Math.min(i+1, loteData.archivos.length-1)) }} />
+                    <div className="flex items-center gap-3 mt-3">
+                      <button onClick={() => setCurrentIndex(i => Math.max(0, i-1))} disabled={currentIndex===0} className="px-3 py-1 border rounded">Anterior</button>
+                      <span className="text-sm">{currentIndex+1}/{loteData.archivos.length}</span>
+                      <button onClick={() => setCurrentIndex(i => Math.min(i+1, loteData.archivos.length-1))} disabled={currentIndex===loteData.archivos.length-1} className="px-3 py-1 border rounded">Siguiente</button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4">
+                  <button onClick={handleCloseLote} className="px-3 py-2 bg-red-600 text-white rounded">Cerrar lote</button>
+                  {lastError && <button className="ml-3 px-3 py-2 border rounded" onClick={handleRetry}>Reintentar</button>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6">
+            {lastError && React.createElement((require('./components/ErrorBanner').default), { message: lastError, onRetry: handleRetry })}
+          </div>
+        </section>
+
+        <aside className="col-span-5 space-y-6">
+          <div className="bg-white p-4 rounded shadow-sm">
+            <h4 className="font-semibold">Progreso</h4>
+            <div className="mt-2 max-h-48 overflow-auto text-xs text-gray-700 bg-gray-50 p-2">
+              {useProgressStore.getState().messages.map((m, i) => (
+                <div key={i} className="py-1">[{m.ts}] {JSON.stringify(m.payload)}</div>
+              ))}
             </div>
           </div>
-          <div style={{ marginTop: 12 }}>
-            <button onClick={handleCloseLote}>Cerrar lote (demo)</button>
-            {lastError && <button style={{ marginLeft: 8 }} onClick={handleRetry}>Reintentar</button>}
+
+          <div className="bg-white p-4 rounded shadow-sm">
+            <h4 className="font-semibold">Logs</h4>
+            <div className="mt-2">
+              <LogViewer mpRoot={rootPath ? `${rootPath}/.media-purgue` : ''} />
+            </div>
           </div>
-        </div>
-      )}
-      {/* error banner */}
-      <div style={{ marginTop: 12 }}>
-        {/* lazy load component to avoid bundling if not used */}
-        {lastError && React.createElement((require('./components/ErrorBanner').default), { message: lastError, onRetry: handleRetry })}
-      </div>
+
+          {stagingInfo && stagingInfo.staging && (
+            <div className="bg-white p-4 rounded shadow-sm">
+              <h4 className="font-semibold">.staging</h4>
+              <div className="mt-2 text-sm text-gray-600">Path: {stagingInfo.staging}</div>
+              <div className="mt-1 text-sm text-gray-600">Files: {stagingInfo.files.join(', ') || '—'}</div>
+              <div className="mt-3">
+                <button onClick={() => revealPath(stagingInfo.staging)} className="px-3 py-1 border rounded">Abrir .staging</button>
+              </div>
+            </div>
+          )}
+        </aside>
+      </main>
+
       <ConfigModal visible={modalVisible} counts={modalCounts || { images: 0, videos: 0 }} defaultConfig={pendingUsuarioConfig} onCancel={() => setModalVisible(false)} onConfirm={async (usuarioConfig: any) => {
         setModalVisible(false)
         setStatusMsg('Generando lotes...')
@@ -183,28 +224,6 @@ export default function App() {
           setStatusMsg('Error generando lotes: ' + (err.message || String(err)))
         }
       }} />
-      <div style={{ marginTop: 20 }}>
-        <h3>Progreso</h3>
-        <div style={{ maxHeight: 200, overflow: 'auto', background: '#f6f6f6', padding: 8 }}>
-          {useProgressStore.getState().messages.map((m, i) => (
-            <div key={i} style={{ fontSize: 12 }}>[{m.ts}] {JSON.stringify(m.payload)}</div>
-          ))}
-        </div>
-      </div>
-      <div style={{ marginTop: 24 }}>
-        <h3>Logs</h3>
-        <LogViewer mpRoot={rootPath ? `${rootPath}/.media-purgue` : ''} />
-        {stagingInfo && stagingInfo.staging && (
-          <div style={{ marginTop: 12 }}>
-            <h4>.staging</h4>
-            <div>Path: {stagingInfo.staging}</div>
-            <div>Files: {stagingInfo.files.join(', ') || '—'}</div>
-            <div style={{ marginTop: 8 }}>
-              <button onClick={() => revealPath(stagingInfo.staging)}>Abrir .staging</button>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   )
 }
