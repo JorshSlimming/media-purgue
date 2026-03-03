@@ -467,7 +467,7 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
       <header className="bg-white border-b border-gray-200 px-4 py-2 flex items-center flex-wrap sticky top-0 z-40">
         <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="Media Purgue" className="w-8 h-8 rounded-xl shadow object-cover" />
+          <img src="./logo.png" alt="Media Purgue" className="w-8 h-8 rounded-xl shadow object-cover" />
           <div>
             <h1 className="text-lg font-bold text-gray-900 leading-tight">Media Purgue</h1>
             <p className="text-xs text-gray-500 font-medium tracking-wide uppercase">Organizacion de multimedia</p>

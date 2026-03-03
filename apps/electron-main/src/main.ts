@@ -60,10 +60,29 @@ if (process.env.MP_E2E) {
   app.setPath('userData', path.join(process.cwd(), '.electron-user-data'))
 }
 
+function getIconPath() {
+  try {
+    if (app.isPackaged) {
+      const icoPath = path.join(process.resourcesPath, 'build', 'icons', 'icon.ico')
+      const pngPath = path.join(process.resourcesPath, 'build', 'icons', 'icon.png')
+      if (fs.existsSync(icoPath)) return icoPath
+      if (fs.existsSync(pngPath)) return pngPath
+      return pngPath
+    }
+  } catch (_) {}
+  const devIco = path.join(process.cwd(), 'build', 'icons', 'icon.ico')
+  const devPng = path.join(process.cwd(), 'build', 'icons', 'icon.png')
+  if (fs.existsSync(devIco)) return devIco
+  if (fs.existsSync(devPng)) return devPng
+  return devPng
+}
+
 function createWindow() {
+  
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: getIconPath(),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -177,6 +196,11 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+  try {
+    if (process.platform === 'darwin' && (app as any).dock) {
+      try { (app as any).dock.setIcon(getIconPath()) } catch (_) {}
+    }
+  } catch (_) {}
   // delegate to testable handler implementations
   ipcMain.handle('mp:appendAppLog', async (evt, rootPath: string, entry: any) => appendAppLogHandler(rootPath, entry))
   ipcMain.handle('mp:readAppLog', async (evt, rootPath: string, filters?: { types?: string[]; searchText?: string }) => readAppLogHandler(rootPath, filters))

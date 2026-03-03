@@ -15,7 +15,7 @@
     "start": "electron .",
     "package": "electron-builder",
     "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win nsis --config.win.signAndEditExecutable=false",
+    "dist:win": "npm run build && electron-builder --win nsis",
     "dist:linux": "npm run build && electron-builder --linux AppImage deb",
     "test": "vitest --run",
     "test:coverage": "vitest --run --coverage",
@@ -57,6 +57,7 @@
   "build": {
     "appId": "com.mediapurgue.app",
     "productName": "Media Purgue",
+    "icon": "build/icons/icon",
     "directories": {
       "output": "release"
     },
@@ -69,7 +70,7 @@
       "main": "apps/electron-main/dist/main.js"
     },
     "win": {
-      "signAndEditExecutable": false,
+      "signAndEditExecutable": true,
       "target": [
         "nsis"
       ]

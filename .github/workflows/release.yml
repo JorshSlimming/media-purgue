@@ -25,24 +25,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Windows installer
-        run: npm run dist:win
-
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-installer
-          path: |
-            release/*.exe
-            release/*.blockmap
-
-      - name: Publish Windows to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            release/*.exe
-            release/*.blockmap
+      - name: Build (no packaging)
+        run: npm run build
 
   build-linux:
     runs-on: ubuntu-latest
@@ -59,28 +43,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Linux packaging dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y fakeroot dpkg rpm
-
-      - name: Build Linux packages
-        run: npm run dist:linux
-
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-packages
-          path: |
-            release/*.AppImage
-            release/*.deb
-            release/*.rpm
-
-      - name: Publish Linux to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            release/*.AppImage
-            release/*.deb
-            release/*.rpm
+      - name: Build (no packaging)
+        run: npm run build
