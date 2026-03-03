@@ -14,10 +14,12 @@ import { writeLogJSON, readLogJSON, listLogs } from './logger'
 import fs from 'fs'
 import fsExtra from 'fs-extra'
 import os from 'os'
-import { ActivityLogger } from './activityLogger'
+import { getActivityLogger } from './loggerRegistry'
+import { setNotifier } from './progressNotifier'
 import { appendAppLogHandler, readAppLogHandler } from './ipcHandlers'
 import { updateArchivoEstadoHandler } from './handlers/updateArchivoEstado'
 import { saveUsuarioConfigHandler } from './handlers/saveUsuarioConfig'
+import { saveSessionHandler, loadSessionHandler } from './handlers/session'
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -42,6 +44,11 @@ function sendProgress(payload: any) {
   const win = BW.getAllWindows()[0]
   if (win) win.webContents.send('mp:progress', payload)
 }
+
+// expose sendProgress to other modules via progressNotifier
+setNotifier((p: any) => {
+  try { sendProgress(p) } catch (_) {}
+})
 
 // Development: disable GPU to avoid Windows Chromium cache/GPU disk errors
 app.commandLine.appendSwitch('disable-gpu')
@@ -122,7 +129,7 @@ app.whenReady().then(() => {
                 if (mpRoot) {
                   const projectRoot = path.resolve(mpRoot, '..')
                   try {
-                    const logger = new ActivityLogger(projectRoot)
+                    const logger = getActivityLogger(projectRoot)
                     logger.logError('error:mediaProtocol', err, { file: filePath }).catch(() => {})
                   } catch (_) {}
                 }
@@ -196,7 +203,7 @@ ipcMain.handle('mp:scanFolder', async (evt, opts) => {
 
   // save usuario.json
   const configPath = path.join(configDir, 'usuario.json')
-  const scanLogger = new ActivityLogger(rootPath)
+  const scanLogger = getActivityLogger(rootPath)
   // non-blocking: attempt to record that a scan started
   scanLogger.logEvent('scan:starting', { includeSubfolders, usuarioConfig }).catch(() => {})
   await writeJsonAtomic(configPath, usuarioConfig || {
@@ -320,6 +327,12 @@ ipcMain.handle('mp:closeLote', async (evt, lotePath: string) => {
 
   try {
     const res = await implCloseLote(lotePath)
+    // If the close process auto-finalized the library, notify renderer via progress channel
+    try {
+      if (res && (res as any).autoFinalized) {
+        try { sendProgress({ type: 'finalize:autoFinished', data: (res as any).autoFinalized }) } catch (_) {}
+      }
+    } catch (_) {}
     // if impl returns non-ok, augment with staging/log info
     if (res && res.ok === false) {
       return { ...res, staging, log: logFile }
@@ -343,6 +356,14 @@ ipcMain.handle('mp:readLog', async (evt, mpRoot: string, fileName: string) => {
 
 ipcMain.handle('mp:saveUsuarioConfig', async (evt, rootPath: string, usuarioConfig: any) => {
   return saveUsuarioConfigHandler(rootPath, usuarioConfig)
+})
+
+ipcMain.handle('mp:saveSession', async (evt, rootPath: string, session: any) => {
+  return saveSessionHandler(rootPath, session)
+})
+
+ipcMain.handle('mp:loadSession', async (evt, rootPath: string) => {
+  return loadSessionHandler(rootPath)
 })
 
 import { finalizeLibrary } from './finalizeLibrary'

@@ -1,12 +1,7 @@
-import { ActivityLogger } from './activityLogger'
+import { getActivityLogger } from './loggerRegistry'
 
-/** One ActivityLogger instance per rootPath so the writeQueue is shared across all IPC calls */
-const loggerCache = new Map<string, ActivityLogger>()
-function getLogger(rootPath: string): ActivityLogger {
-  if (!loggerCache.has(rootPath)) {
-    loggerCache.set(rootPath, new ActivityLogger(rootPath))
-  }
-  return loggerCache.get(rootPath)!
+function getLogger(rootPath: string) {
+  return getActivityLogger(rootPath)
 }
 
 export async function appendAppLogHandler(rootPath: string, entry: any) {

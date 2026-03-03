@@ -3,6 +3,7 @@ import path from 'path'
 import os from 'os'
 import fsp from 'fs/promises'
 import { writeLote } from '../../apps/electron-main/src/jsonManager'
+import type { Lote } from '../../apps/electron-main/src/jsonManager'
 import { updateArchivoEstadoHandler } from '../../apps/electron-main/src/handlers/updateArchivoEstado'
 import { ActivityLogger } from '../../apps/electron-main/src/activityLogger'
 
@@ -22,7 +23,7 @@ describe('updateArchivoEstado logging', () => {
     await fsp.mkdir(proc, { recursive: true })
     const lotePath = path.join(proc, 'lote_0001.json')
 
-    const lote = {
+    const lote: Lote = {
       lote_id: 1,
       tipo: 'imagenes',
       criterio: 'fecha_creacion',

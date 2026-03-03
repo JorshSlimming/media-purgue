@@ -92,6 +92,16 @@ export async function saveUsuarioConfig(rootPath: string, usuarioConfig: any) {
   return getMp().saveUsuarioConfig(rootPath, usuarioConfig)
 }
 
+export async function saveSession(rootPath: string, session: any) {
+  if (!has('saveSession')) return Promise.reject(new Error('IPC not available'))
+  return getMp().saveSession(rootPath, session)
+}
+
+export async function loadSession(rootPath: string) {
+  if (!has('loadSession')) return Promise.reject(new Error('IPC not available'))
+  return getMp().loadSession(rootPath)
+}
+
 export async function readAppLog(mpRoot: string) {
   if (!has('readAppLog')) return Promise.reject(new Error('IPC not available'))
   return getMp().readAppLog(mpRoot)

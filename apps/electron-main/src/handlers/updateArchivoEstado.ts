@@ -1,6 +1,6 @@
 import path from 'path'
 import { readLote, writeLote } from '../jsonManager'
-import { ActivityLogger } from '../activityLogger'
+import { getActivityLogger } from '../loggerRegistry'
 
 export async function updateArchivoEstadoHandler(args: any) {
   const { lotePath, orden, nuevoEstado } = args || {}
@@ -12,9 +12,13 @@ export async function updateArchivoEstadoHandler(args: any) {
   entry.estado = nuevoEstado
 
   try {
-    const loteDir = path.dirname(lotePath)
-    const projectRoot = path.resolve(loteDir, '..', '..')
-    const upLogger = new ActivityLogger(projectRoot)
+    const absoluteLotePath = path.resolve(lotePath)
+    const marker = `${path.sep}.media-purgue`
+    const markerIndex = absoluteLotePath.lastIndexOf(marker)
+    const projectRoot = markerIndex >= 0
+      ? absoluteLotePath.slice(0, markerIndex)
+      : path.resolve(path.dirname(lotePath), '..', '..')
+    const upLogger = getActivityLogger(projectRoot)
     await writeLote(lotePath, lote, upLogger)
     try { await upLogger.logEvent('file:stateChanged', { lotePath, orden, nuevoEstado, nombre: entry.nombre }) } catch (_) {}
   } catch (_) {

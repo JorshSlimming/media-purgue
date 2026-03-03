@@ -96,9 +96,18 @@ export class ActivityLogger {
         return []
       }
       if (err instanceof SyntaxError) {
-        // JSON parsing failed - attempt recovery
+        // JSON parsing failed - attempt recovery and rewrite a cleaned file so subsequent reads succeed
         console.error('Corrupted events file, attempting recovery')
-        return await this.attemptLineByLineRecovery()
+        const recovered = await this.attemptLineByLineRecovery()
+        try {
+          // rewrite clean events file containing recovered entries
+          await fs.mkdir(this.logsDir, { recursive: true })
+          await this.writeWithRetry(this.eventsFilePath, JSON.stringify({ entries: recovered }, null, 2))
+        } catch (writeErr) {
+          // if rewrite fails, log and return recovered entries anyway
+          console.error('Failed to rewrite recovered events file', writeErr)
+        }
+        return recovered
       }
       throw err
     }

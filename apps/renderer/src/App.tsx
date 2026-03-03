@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { scanFolder, readLote, updateArchivoEstado, closeLote, inspectFolder, selectFolder, listStaging, revealPath, onProgress, finalizeLibrary, appendAppLog, readAppLog, saveUsuarioConfig } from './ipc'
+import { scanFolder, readLote, updateArchivoEstado, closeLote, inspectFolder, selectFolder, listStaging, revealPath, onProgress, finalizeLibrary, appendAppLog, readAppLog, saveUsuarioConfig, saveSession, loadSession } from './ipc'
 import ConfigModal from './components/ConfigModal'
 import LogViewer from './components/LogViewer'
 import Swiper from './components/Swiper'
@@ -35,10 +35,12 @@ export default function App() {
   const [simplePreview, setSimplePreview] = useState<any | null>(null)
 
   // Modals stats state
-  const [loteStats, setLoteStats] = useState<{ id: string | number, conservados: number, eliminados: number } | null>(null)
+  const [loteStats, setLoteStats] = useState<{ id: string | number, conservados: number, eliminados: number, bytesConservados?: number, bytesEliminados?: number } | null>(null)
   const [globalStats, setGlobalStats] = useState<any | null>(null)
   const [showGlobalSummary, setShowGlobalSummary] = useState(false)
+  const [finalDestino, setFinalDestino] = useState<string | null>(null)
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false)
+  const autoOpenFinalOnceRef = React.useRef(false)
 
   function formatBytes(bytes?: number) {
     if (!bytes && bytes !== 0) return ''
@@ -64,6 +66,7 @@ export default function App() {
   async function handleSelectFolder() {
     const p = await selectFolder()
     if (p) {
+      autoOpenFinalOnceRef.current = false
       setRootPath(p)
       // Log folder selection event (non-blocking) and refresh persisted events
       try { appendAppLog(p, { type: 'button:selectFolder', data: { path: p } }).catch(() => {}) } catch (_) {}
@@ -89,6 +92,24 @@ export default function App() {
             secondsPerVideo: 20
           })
         }
+        // attempt to load previous session for this root
+        try {
+          const ses = await loadSession(p).catch(() => null)
+          if (ses && ses.ok && ses.session) {
+            const s = ses.session
+            // restore usuarioConfig if present
+            if (s.usuarioConfig) setPendingUsuarioConfig(s.usuarioConfig)
+            // restore created lote list if present
+            if (Array.isArray(s.created) && s.created.length > 0) {
+              setScanResult({ created: s.created, counts: s.counts || counts })
+              if (Array.isArray(s.closedLotes)) setClosedLotes(s.closedLotes)
+            }
+            // if session has an active lote, try to set it (do not auto-open)
+            if (s.currentLote) {
+              setSelectedLote(s.currentLote)
+            }
+          }
+        } catch (_) {}
         const st = await listStaging(p)
         setStagingInfo(st)
       } catch (err: any) {
@@ -98,6 +119,19 @@ export default function App() {
   }
 
   async function handleStartProcess() {
+    // If we already have a scanResult (from session) consider this a "continue" action
+    if (scanResult && Array.isArray(scanResult.created) && scanResult.created.length > 0) {
+      // resume: open next unclosed lote (if simpleMode) or just show generated lotes
+      if (simpleMode) {
+        try {
+          const entries: any[] = (loteList && loteList.length > 0) ? loteList : (scanResult?.created?.map((p:string, idx:number)=>({ path: p })) || [])
+          const next = entries.find((e:any) => e.path && !closedLotes.includes(e.path))
+          if (next) await openLote(next.path)
+        } catch (_) {}
+      }
+      return
+    }
+
     setStatusMsg('Generando lotes en segundo plano...')
     try {
       // Log start process button with current pending config (non-blocking)
@@ -106,6 +140,8 @@ export default function App() {
       setScanResult({ created: [], counts: modalCounts })
       const res = await scanFolder({ rootPath, includeSubfolders: pendingUsuarioConfig?.incluir_subcarpetas ?? true, usuarioConfig: pendingUsuarioConfig })
       setScanResult(res)
+      // persist session: store usuarioConfig and created list
+      try { if (rootPath) await saveSession(rootPath, { usuarioConfig: pendingUsuarioConfig, created: res.created, counts: res.counts || modalCounts, closedLotes: closedLotes || [] }).catch(() => {}) } catch (_) {}
       setStatusMsg(null)
     } catch (err: any) {
       setStatusMsg('Error generando lotes: ' + (err.message || String(err)))
@@ -116,11 +152,25 @@ export default function App() {
     setSelectedLote(path)
     const lote = await readLote(path)
     setLoteData(lote)
-    setCurrentIndex(0)
+    // set current index to first pendiente file so resume doesn't start from the beginning
+    try {
+      const archivos = Array.isArray(lote?.archivos) ? lote.archivos : []
+      const firstPending = archivos.findIndex((f: any) => f.estado === 'pendiente')
+      setCurrentIndex(firstPending >= 0 ? firstPending : 0)
+    } catch (_) {
+      setCurrentIndex(0)
+    }
     // Log navigation to open lote (non-blocking) and refresh persisted events
     try {
       if (rootPath) appendAppLog(rootPath, { type: 'navigation:openLote', data: { lotePath: path, loteId: lote?.lote_id } }).catch(() => {})
       try { if (rootPath) readAppLog(rootPath).then((res:any)=>{ if(res?.ok) setAppEvents(res.entries||[]) }).catch(()=>{}) } catch(_) {}
+    } catch (_) {}
+    // persist session: record current open lote
+    try {
+      if (rootPath) {
+        const sess = { usuarioConfig: pendingUsuarioConfig, created: scanResult?.created || [], counts: scanResult?.counts || modalCounts || {}, closedLotes: closedLotes || [], currentLote: path }
+        await saveSession(rootPath, sess).catch(() => {})
+      }
     } catch (_) {}
   }
 
@@ -158,6 +208,13 @@ export default function App() {
         } catch (_) { return { path: p } }
       })(selectedLote)
       setLoteList(prev => prev.map((it: any) => it.path === selectedLote ? meta : it))
+      // persist session after state change
+      try {
+        if (rootPath) {
+          const sess = { usuarioConfig: pendingUsuarioConfig, created: scanResult?.created || [], counts: scanResult?.counts || modalCounts || {}, closedLotes: closedLotes || [], currentLote: selectedLote }
+          await saveSession(rootPath, sess).catch(() => {})
+        }
+      } catch (_) {}
     } catch (_) {}
   }
 
@@ -190,6 +247,14 @@ export default function App() {
           if (next) await openLote(next.path)
         } catch (_) {}
       }
+        // update persisted session (closed lot) — compute new closed list deterministically
+        try {
+          if (rootPath) {
+            const newClosed = closedLotes.includes(closedPath) ? closedLotes : [...closedLotes, closedPath]
+            const sess = { usuarioConfig: pendingUsuarioConfig, created: scanResult?.created || [], counts: scanResult?.counts || modalCounts || {}, closedLotes: newClosed }
+            await saveSession(rootPath, sess).catch(() => {})
+          }
+        } catch (_) {}
     } else {
       const errMsg = res?.error || 'Error desconocido al cerrar lote'
       setStatusMsg('Error: ' + errMsg)
@@ -231,21 +296,68 @@ export default function App() {
     }
   }
 
+  const persistProgressEvent = React.useCallback((progressEvent: any, attempt = 0) => {
+    if (!rootPath || !progressEvent) return
+    const entry = {
+      type: progressEvent?.type || 'progress:event',
+      data: progressEvent
+    }
+    appendAppLog(rootPath, entry)
+      .then(() => {
+        readAppLog(rootPath)
+          .then((res: any) => { if (res?.ok) setAppEvents(res.entries || []) })
+          .catch(() => {})
+      })
+      .catch(() => {
+        if (attempt < 2) {
+          setTimeout(() => persistProgressEvent(progressEvent, attempt + 1), 200 * (attempt + 1))
+        }
+      })
+  }, [rootPath])
+
   const addMessage = useProgressStore(s => s.addMessage)
   React.useEffect(() => {
     const unsub = onProgress((data: any) => {
       addMessage(data)
-      // persist compact app event to disk under .media-purgue/Logs/app_events.json and refresh persisted list
+      // If a finalize result comes from main (auto-finalize), open global summary modal
       try {
-        if (rootPath) {
-          appendAppLog(rootPath, { action: data.type, payload: data }).catch(() => {})
-          // async refresh (don't await to avoid blocking the event loop)
-          readAppLog(rootPath).then((res:any) => { if (res?.ok) setAppEvents(res.entries || []) }).catch(() => {})
+        if (data && (data.type === 'finalize:autoStarted' || data.type === 'finalize:starting')) {
+          setStatusMsg('Finalizando...')
+        }
+        if (data && (data.type === 'finalize:autoFinished' || data.type === 'finalize:finished' || data.type === 'finalize:copied' || data.type === 'finalize:moved')) {
+          const payload = data.data || data.result || data
+          // payload may contain { destino, summary } or summary directly
+          const summary = payload?.summary || payload
+          // map backend summary keys to modal's expected keys
+          const mapped = {
+            total_archivos_revisados: (summary?.archivos_procesados ?? summary?.procesos ?? 0) || 0,
+            total_conservados: (summary?.conservados ?? 0) || 0,
+            total_eliminados: (summary?.eliminados ?? 0) || 0,
+            bytes_ahorrados: (summary?.espacio_total_liberado_bytes ?? summary?.espacio_total_conservado_bytes ?? 0) || 0
+          }
+          try { setGlobalStats(mapped) } catch (_) {}
+          try { setFinalDestino(payload?.destino || payload?.destinoPath || payload?.path || null) } catch (_) {}
+          try { setShowGlobalSummary(true) } catch (_) {}
+          // auto-open final folder only once per finalize cycle
+          try {
+            const reqPath = payload?.destino || payload?.destinoPath || payload?.path || null
+            if (reqPath && !autoOpenFinalOnceRef.current) {
+              autoOpenFinalOnceRef.current = true
+              // small delay to ensure OS has flushed operations
+              setTimeout(() => { try { revealPath(reqPath) } catch (_) {} }, 300)
+            }
+          } catch (_) {}
+          setStatusMsg(null)
+        }
+        if (data && data.type === 'finalize:autoFailed') {
+          setStatusMsg('Error durante finalización: ' + (data.data?.error || ''))
         }
       } catch (_) {}
+      // keep real-time UI (live store) and persist to app_events.json in parallel
+      try { persistProgressEvent(data) } catch (_) {}
     })
     return unsub
-  }, [addMessage])
+  }, [addMessage, persistProgressEvent])
 
   // Load metadata (tipo, id) for each generated lote so we can show "Lote 1, Lote 2" and its tipo
   React.useEffect(() => {
@@ -480,7 +592,7 @@ export default function App() {
 
                       <div className="flex justify-center">
                         <button onClick={handleStartProcess} className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transition-colors">
-                          Iniciar
+                          {(scanResult && Array.isArray(scanResult.created) && scanResult.created.length > 0) ? 'Continuar' : 'Iniciar'}
                         </button>
                       </div>
                     </div>
@@ -633,19 +745,24 @@ export default function App() {
                   />
                 </div>
               )}
-              {/* per-lote progress bar (shows files processed within the lote). Display in non-simple mode only. */}
+              {/* per-lote progress bar (shows current navigation progress within the lote). */}
               {loteData && (
                 <div className="mt-4">
                   {(() => {
                     const archivos = Array.isArray(loteData.archivos) ? loteData.archivos : []
                     const totalFiles = archivos.length || 0
-                    const processed = archivos.filter((f:any) => f.estado !== 'pendiente').length
-                    const pctFile = totalFiles ? Math.round((processed / totalFiles) * 100) : 0
+                    const currentPos = totalFiles ? Math.min(currentIndex + 1, totalFiles) : 0
+                    const reviewedCount = archivos.filter((f:any) => f.estado !== 'pendiente').length
+                    // Use the greatest value between navigation position and reviewed files
+                    // to avoid off-by-one behavior on the final item.
+                    const progressCount = totalFiles ? Math.min(totalFiles, Math.max(currentPos, reviewedCount)) : 0
+                    const pctFile = totalFiles ? Math.round((progressCount / totalFiles) * 100) : 0
                     return (
                       <div className="w-full flex items-center gap-3">
                         <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
                           <div className="bg-indigo-500 h-3 rounded-full" style={{ width: `${pctFile}%` }} />
                         </div>
+                        <div className="w-24 text-sm text-gray-600 text-right">{totalFiles ? `${progressCount}/${totalFiles}` : ''}</div>
                       </div>
                     )
                   })()}
@@ -662,11 +779,36 @@ export default function App() {
                 {/* overlay without close button — clicking the toggle button controls visibility */}
                 {(() => {
                   const live = useProgressStore.getState().messages || []
-                  const displayed: any[] = (appEvents && appEvents.length > 0) ? appEvents : live
+                  const persisted = (appEvents || []).map((e: any) => {
+                    if (e?.data && !e?.payload) {
+                      return {
+                        ...e,
+                        payload: e.data,
+                        action: e.action || e.type || e.data?.type
+                      }
+                    }
+                    return e
+                  })
+                  const liveNormalized = live.map((m: any, i: number) => ({
+                    timestamp: m?.ts || new Date().toISOString(),
+                    action: m?.type || 'progress:event',
+                    payload: m,
+                    __live: true,
+                    __idx: i
+                  }))
+
+                  const displayed: any[] = [...persisted, ...liveNormalized]
                   if (!displayed || displayed.length === 0) {
                     return <div className="text-gray-600 italic">Esperando eventos...</div>
                   }
-                  const displayedOrdered = displayed.slice().sort((a: any, b: any) => {
+                  const deduped = displayed.filter((e: any, idx: number, arr: any[]) => {
+                    const id = e?.id || `${e?.action || e?.type}|${e?.timestamp || e?.ts}|${e?.payload?.loteId || ''}|${e?.payload?.fileName || ''}`
+                    return arr.findIndex((x: any) => {
+                      const xid = x?.id || `${x?.action || x?.type}|${x?.timestamp || x?.ts}|${x?.payload?.loteId || ''}|${x?.payload?.fileName || ''}`
+                      return xid === id
+                    }) === idx
+                  })
+                  const displayedOrdered = deduped.slice().sort((a: any, b: any) => {
                     const ta = new Date(a.timestamp || a.ts || 0).getTime() || 0
                     const tb = new Date(b.timestamp || b.ts || 0).getTime() || 0
                     return tb - ta
@@ -741,12 +883,33 @@ export default function App() {
         visible={showGlobalSummary}
         stats={globalStats}
         onOpenLibrary={() => {
-          let reqPath = rootPath
-          // fallback location guessing (since we don't have user config globally stored in state)
-          if (rootPath) reqPath = rootPath.replace(/[/\\][^/\\]*$/, '') + '/Biblioteca_Final'
-          revealPath(reqPath)
+          const reqPath = finalDestino || (rootPath ? rootPath.replace(/[/\\][^/\\]*$/, '') + '/Biblioteca_Final' : '')
+          if (reqPath) revealPath(reqPath)
         }}
-        onClose={() => setShowGlobalSummary(false)}
+        onClose={() => {
+          // fully reset UI to initial state so user can open a different folder
+          setShowGlobalSummary(false)
+          setScanResult(null)
+          setLoteList([])
+          setLoteData(null)
+          setSelectedLote(null)
+          setClosedLotes([])
+          setLoteStats(null)
+          setShowFinalizeConfirm(false)
+          setModalVisible(false)
+          setShowLogs(false)
+          setStatusMsg(null)
+          setRootPath('')
+          setPendingUsuarioConfig(null)
+          setModalCounts(null)
+          setStagingInfo(null)
+          setAppEvents([])
+          setFinalDestino(null)
+          setIncludeSub(true)
+          setSimpleMode(true)
+          setSimplePreview(null)
+          autoOpenFinalOnceRef.current = false
+        }}
       />
 
       {/* Finalize confirmation modal (two-step: counts -> sizes) */}

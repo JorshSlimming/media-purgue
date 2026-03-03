@@ -1,5 +1,5 @@
 import path from 'path'
-import { ActivityLogger } from '../activityLogger'
+import { getActivityLogger } from '../loggerRegistry'
 import { writeJsonAtomic } from '../fsManager'
 
 export async function saveUsuarioConfigHandler(rootPath: string, usuarioConfig: any) {
@@ -7,7 +7,7 @@ export async function saveUsuarioConfigHandler(rootPath: string, usuarioConfig: 
   const mpRoot = path.join(rootPath, '.media-purgue')
   const configPath = path.join(mpRoot, 'Config', 'usuario.json')
   const projectRoot = path.resolve(mpRoot, '..')
-  const logger = new ActivityLogger(projectRoot)
+  const logger = getActivityLogger(projectRoot)
   try {
     await writeJsonAtomic(configPath, usuarioConfig, logger)
     try { await logger.logEvent('config:saved', { rootPath, config: usuarioConfig }) } catch (_) {}

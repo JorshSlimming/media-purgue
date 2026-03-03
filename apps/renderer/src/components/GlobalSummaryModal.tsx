@@ -63,7 +63,7 @@ export default function GlobalSummaryModal({ visible, stats, onOpenLibrary, onCl
                             onClick={onOpenLibrary}
                             className="flex-1 py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-md transition-colors"
                         >
-                            Abrir Biblioteca
+                            Abrir carpeta final
                         </button>
                     </div>
                 </div>
