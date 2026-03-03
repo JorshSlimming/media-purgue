@@ -17,8 +17,6 @@ npm run dev
 npm run dist:win
 ```
 
-Documentación completa y diseño: [docs/project-overview.md](docs/project-overview.md)
-
 Descargas y binarios: revisa la sección *Releases* del repositorio (se incluye el instalador `Media Purgue Setup <version>.exe`).
 
 
