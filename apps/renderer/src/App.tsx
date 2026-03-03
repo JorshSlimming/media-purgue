@@ -40,7 +40,10 @@ export default function App() {
   const [showGlobalSummary, setShowGlobalSummary] = useState(false)
   const [finalDestino, setFinalDestino] = useState<string | null>(null)
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false)
+  const [showCreateLotesModal, setShowCreateLotesModal] = useState(false)
+  const [createLotesProgress, setCreateLotesProgress] = useState<{ total: number, created: number, percent: number, etaSeconds: number | null }>({ total: 0, created: 0, percent: 0, etaSeconds: null })
   const autoOpenFinalOnceRef = React.useRef(false)
+  const scanProgressStartRef = React.useRef<number | null>(null)
 
   function formatBytes(bytes?: number) {
     if (!bytes && bytes !== 0) return ''
@@ -133,18 +136,31 @@ export default function App() {
     }
 
     setStatusMsg('Generando lotes en segundo plano...')
+    setShowCreateLotesModal(true)
+    scanProgressStartRef.current = Date.now()
+    const estimatedTotalLotes = Math.max(
+      1,
+      Math.ceil((modalCounts?.images ?? 0) / Math.max(1, pendingUsuarioConfig?.tamano_lote_imagenes ?? 100)) +
+      Math.ceil((modalCounts?.videos ?? 0) / Math.max(1, pendingUsuarioConfig?.tamano_lote_videos ?? 30))
+    )
+    setCreateLotesProgress({ total: estimatedTotalLotes, created: 0, percent: 0, etaSeconds: null })
     try {
       // Log start process button with current pending config (non-blocking)
       try { if (rootPath) appendAppLog(rootPath, { type: 'button:startProcess', data: { config: pendingUsuarioConfig } }).catch(() => {}) } catch (_) {}
       try { if (rootPath) readAppLog(rootPath).then((res:any)=>{ if(res?.ok) setAppEvents(res.entries||[]) }).catch(()=>{}) } catch(_) {}
-      setScanResult({ created: [], counts: modalCounts })
       const res = await scanFolder({ rootPath, includeSubfolders: pendingUsuarioConfig?.incluir_subcarpetas ?? true, usuarioConfig: pendingUsuarioConfig })
       setScanResult(res)
       // persist session: store usuarioConfig and created list
       try { if (rootPath) await saveSession(rootPath, { usuarioConfig: pendingUsuarioConfig, created: res.created, counts: res.counts || modalCounts, closedLotes: closedLotes || [] }).catch(() => {}) } catch (_) {}
       setStatusMsg(null)
+      setShowCreateLotesModal(false)
+      setCreateLotesProgress({ total: 0, created: 0, percent: 0, etaSeconds: null })
+      scanProgressStartRef.current = null
     } catch (err: any) {
       setStatusMsg('Error generando lotes: ' + (err.message || String(err)))
+      setShowCreateLotesModal(false)
+      setCreateLotesProgress({ total: 0, created: 0, percent: 0, etaSeconds: null })
+      scanProgressStartRef.current = null
     }
   }
 
@@ -321,6 +337,35 @@ export default function App() {
       addMessage(data)
       // If a finalize result comes from main (auto-finalize), open global summary modal
       try {
+        if (data && data.type === 'scan:lotePlan') {
+          const total = Number(data.totalLotes || 0)
+          scanProgressStartRef.current = Date.now()
+          setCreateLotesProgress({ total, created: 0, percent: 0, etaSeconds: null })
+        }
+        if (data && data.type === 'scan:loteCreated') {
+          setCreateLotesProgress((prev) => {
+            const total = Number(data.totalLotes || prev.total || 0)
+            const created = Number(data.createdCount || (prev.created + 1))
+            const safeCreated = total > 0 ? Math.min(created, total) : created
+            const percent = total > 0 ? Math.round((safeCreated / total) * 100) : Math.min(99, safeCreated * 5)
+            let etaSeconds: number | null = null
+            const start = scanProgressStartRef.current
+            if (start && total > 0 && safeCreated >= 2) {
+              const elapsedSec = (Date.now() - start) / 1000
+              const avgPerLote = elapsedSec / safeCreated
+              etaSeconds = Math.max(0, Math.round((total - safeCreated) * avgPerLote))
+            }
+            return { total, created: safeCreated, percent, etaSeconds }
+          })
+        }
+        if (data && data.type === 'scan:done') {
+          setCreateLotesProgress((prev) => {
+            const total = Number(data.totalLotes || prev.total || 0)
+            const created = Number(data.createdCount || total || prev.created)
+            const safeCreated = total > 0 ? Math.min(created, total) : created
+            return { total, created: safeCreated, percent: 100, etaSeconds: 0 }
+          })
+        }
         if (data && (data.type === 'finalize:autoStarted' || data.type === 'finalize:starting')) {
           setStatusMsg('Finalizando...')
         }
@@ -420,7 +465,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
-      <header className="bg-white border-b border-gray-200 px-4 py-2 flex items-center sticky top-0 z-40">
+      <header className="bg-white border-b border-gray-200 px-4 py-2 flex items-center flex-wrap sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="Media Purgue" className="w-8 h-8 rounded-xl shadow object-cover" />
           <div>
@@ -432,7 +477,7 @@ export default function App() {
         {/* controls removed from left header; they display on the right when scanResult exists */}
 
         {/* middle: file metadata (between app name and lote controls) */}
-        <div className="flex-1 px-4 text-center">
+        <div className="flex-1 px-4 text-center min-w-0">
           {loteData && loteData.archivos && loteData.archivos[currentIndex] && (
             <div className="flex flex-col items-center">
               <div className="font-medium text-gray-800 truncate max-w-[50vw]" title={loteData.archivos[currentIndex].nombre}>{loteData.archivos[currentIndex].nombre}</div>
@@ -871,6 +916,31 @@ export default function App() {
           try { if (rootPath) saveUsuarioConfig(rootPath, usuarioConfig).catch(() => {}) } catch (_) {}
         }}
       />
+
+      {showCreateLotesModal && (
+        <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6 text-center">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Creando lotes...</h3>
+            <p className="text-sm text-gray-500 mb-4">Estamos organizando los archivos antes de continuar.</p>
+
+            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden mb-3">
+              <div className="bg-indigo-600 h-4 rounded-full transition-all duration-200" style={{ width: `${createLotesProgress.percent}%` }} />
+            </div>
+
+            <div className="text-sm text-gray-700 font-semibold">
+              {createLotesProgress.percent}%
+              {createLotesProgress.total > 0 ? ` · ${createLotesProgress.created}/${createLotesProgress.total} lotes` : ''}
+            </div>
+
+            {createLotesProgress.etaSeconds !== null && createLotesProgress.percent < 100 && (
+              <div className="text-xs text-gray-500 mt-2">
+                Tiempo estimado restante: {formatSeconds(createLotesProgress.etaSeconds)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <LoteSummaryModal
         visible={!!loteStats}

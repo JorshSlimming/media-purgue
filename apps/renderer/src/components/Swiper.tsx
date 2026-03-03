@@ -103,7 +103,7 @@ export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onP
         <div
           ref={containerRef}
           className="relative bg-black w-full flex items-center justify-center touch-pan-y overflow-hidden select-none"
-          style={{ height: '78vh', minHeight: '520px' }}
+          style={{ height: '78vh', minHeight: '420px' }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -131,13 +131,13 @@ export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onP
 
           {/* Small previews for prev / next (clickable) */}
           {prevFile && !/\.(mp4|mov|webm|mkv|avi)$/i.test(prevFile.nombre) && (
-            <button onClick={() => { try { onPrev && onPrev() } catch {} }} title={prevFile.nombre} className={"absolute left-4 bottom-6 w-32 h-40 bg-black/60 rounded-md overflow-hidden flex flex-col items-center justify-start border border-white/10 z-20"}>
+            <button onClick={() => { try { onPrev && onPrev() } catch {} }} title={prevFile.nombre} className={"hidden lg:flex absolute left-4 bottom-6 w-32 h-40 bg-black/60 rounded-md overflow-hidden flex-col items-center justify-start border border-white/10 z-20"}>
               <img src={"media://local/file?path=" + encodeURIComponent(prevFile.ruta_original || '')} alt={prevFile.nombre} className="w-full h-28 object-contain opacity-100" />
               <span className="text-xs text-white/90 mt-1">Anterior</span>
             </button>
           )}
           {nextFile && !/\.(mp4|mov|webm|mkv|avi)$/i.test(nextFile.nombre) && (
-            <button onClick={() => { try { onNext && onNext() } catch {} }} title={nextFile.nombre} className={"absolute right-4 bottom-6 w-32 h-40 bg-black/60 rounded-md overflow-hidden flex flex-col items-center justify-start border border-white/10 z-20"}>
+            <button onClick={() => { try { onNext && onNext() } catch {} }} title={nextFile.nombre} className={"hidden lg:flex absolute right-4 bottom-6 w-32 h-40 bg-black/60 rounded-md overflow-hidden flex-col items-center justify-start border border-white/10 z-20"}>
               <img src={"media://local/file?path=" + encodeURIComponent(nextFile.ruta_original || '')} alt={nextFile.nombre} className="w-full h-28 object-contain opacity-100" />
               <span className="text-xs text-white/90 mt-1">Siguiente</span>
             </button>
@@ -185,22 +185,22 @@ export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onP
           </div>
         </div>
         {/* Prev / Next attached to media section (outside but visible), centered vertically */}
-        <button onClick={() => { try { onPrev && onPrev() } catch {} }} aria-hidden={false} className={"absolute left-[-56px] top-1/2 -translate-y-1/2 p-2 rounded-full bg-white border shadow-md z-30 ring-1 ring-blue-100" + (!prevFile ? ' opacity-40 pointer-events-none' : '')}>
+        <button onClick={() => { try { onPrev && onPrev() } catch {} }} aria-hidden={false} className={`hidden lg:block absolute left-[-56px] top-1/2 -translate-y-1/2 p-2 rounded-full bg-white border shadow-md z-30 ring-1 ring-blue-100 ${!prevFile ? ' opacity-40 pointer-events-none' : ''}`}>
           <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
         </button>
-        <button onClick={() => { try { onNext && onNext() } catch {} }} aria-hidden={false} className={"absolute right-[-56px] top-1/2 -translate-y-1/2 p-2 rounded-full bg-white border shadow-md z-30 ring-1 ring-blue-100" + (!nextFile ? ' opacity-40 pointer-events-none' : '')}>
+        <button onClick={() => { try { onNext && onNext() } catch {} }} aria-hidden={false} className={`hidden lg:block absolute right-[-56px] top-1/2 -translate-y-1/2 p-2 rounded-full bg-white border shadow-md z-30 ring-1 ring-blue-100 ${!nextFile ? ' opacity-40 pointer-events-none' : ''}`}>
           <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
         </button>
 
         {/* Action buttons aligned with Prev/Next (same vertical center) */}
-        {(() => {
+          {(() => {
           const actionsDisabled = isVideo && !videoReady
           return (
             <button
               onClick={() => { if (!actionsDisabled) onDelete() }}
               aria-pressed={isDeleted}
               aria-disabled={actionsDisabled}
-              className={`absolute left-[-240px] top-[72%] translate-y-0 px-10 py-4 text-white text-lg font-bold rounded-full z-50 transition-transform ${isDeleted ? 'bg-red-800 scale-[0.97] shadow-inner translate-y-1 ring-4 ring-red-300/30' : 'bg-red-600 hover:bg-red-700 shadow-2xl'} ${actionsDisabled ? 'opacity-60 pointer-events-none' : ''}`}
+              className={`hidden lg:block absolute left-[-240px] top-[72%] translate-y-0 px-10 py-4 text-white text-lg font-bold rounded-full z-50 transition-transform ${isDeleted ? 'bg-red-800 scale-[0.97] shadow-inner translate-y-1 ring-4 ring-red-300/30' : 'bg-red-600 hover:bg-red-700 shadow-2xl'} ${actionsDisabled ? 'opacity-60 pointer-events-none' : ''}`}
               style={{ boxShadow: isDeleted ? 'inset 0 4px 8px rgba(0,0,0,0.25)' : '0 16px 40px rgba(220,38,38,0.25)' }}
             >
               Eliminar
@@ -208,14 +208,14 @@ export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onP
           )
         })()}
 
-        {(() => {
+          {(() => {
           const actionsDisabled = isVideo && !videoReady
           return (
             <button
               onClick={() => { if (!actionsDisabled) onKeep() }}
               aria-pressed={isKept}
               aria-disabled={actionsDisabled}
-              className={`absolute right-[-240px] top-[72%] translate-y-0 px-10 py-4 text-white text-lg font-bold rounded-full z-50 transition-transform ${isKept ? 'bg-green-800 scale-[0.97] shadow-inner translate-y-1 ring-4 ring-green-300/30' : 'bg-green-600 hover:bg-green-700 shadow-2xl'} ${actionsDisabled ? 'opacity-60 pointer-events-none' : ''}`}
+              className={`hidden lg:block absolute right-[-240px] top-[72%] translate-y-0 px-10 py-4 text-white text-lg font-bold rounded-full z-50 transition-transform ${isKept ? 'bg-green-800 scale-[0.97] shadow-inner translate-y-1 ring-4 ring-green-300/30' : 'bg-green-600 hover:bg-green-700 shadow-2xl'} ${actionsDisabled ? 'opacity-60 pointer-events-none' : ''}`}
               style={{ boxShadow: isKept ? 'inset 0 4px 8px rgba(0,0,0,0.22)' : '0 16px 40px rgba(34,197,94,0.22)' }}
             >
               Conservar
@@ -228,7 +228,7 @@ export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onP
           <button
             onClick={() => { try { onRestart && onRestart() } catch {} }}
             title="Volver a Revisar"
-            className={"absolute left-[-240px] top-[8%] px-6 py-2 text-white text-sm font-semibold rounded-full z-50 bg-blue-600 hover:bg-blue-700 shadow-md whitespace-nowrap"}
+            className={"hidden lg:block absolute left-[-240px] top-[8%] px-6 py-2 text-white text-sm font-semibold rounded-full z-50 bg-blue-600 hover:bg-blue-700 shadow-md whitespace-nowrap"}
           >
             Volver a Revisar
           </button>
@@ -239,11 +239,18 @@ export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onP
           <button
             onClick={() => { try { onFinalize && onFinalize() } catch {} }}
             title="Finalizar Lote"
-            className={"absolute right-[-240px] top-[8%] px-6 py-2 text-white text-sm font-semibold rounded-full z-50 bg-indigo-600 hover:bg-indigo-700 shadow-md whitespace-nowrap"}
+            className={"hidden lg:block absolute right-[-240px] top-[8%] px-6 py-2 text-white text-sm font-semibold rounded-full z-50 bg-indigo-600 hover:bg-indigo-700 shadow-md whitespace-nowrap"}
           >
             Finalizar Lote
           </button>
         )}
+
+        {/* Bottom action bar for narrower windows */}
+        <div className="lg:hidden w-full flex items-center justify-center gap-4 py-3 bg-white">
+          <button onClick={() => { if (!(isVideo && !videoReady)) onDelete() }} className="flex-1 py-2 bg-red-600 text-white rounded-lg font-semibold">Eliminar</button>
+          <button onClick={() => { if (!(isVideo && !videoReady)) onKeep() }} className="flex-1 py-2 bg-green-600 text-white rounded-lg font-semibold">Conservar</button>
+          {showFinalize && <button onClick={() => { try { onFinalize && onFinalize() } catch {} }} className="py-2 px-3 bg-indigo-600 text-white rounded-lg font-semibold">Finalizar</button>}
+        </div>
       </div>
 
       {/* suggestion removed per UX request */}

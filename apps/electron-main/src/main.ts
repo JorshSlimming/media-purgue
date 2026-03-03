@@ -232,6 +232,17 @@ ipcMain.handle('mp:scanFolder', async (evt, opts) => {
 
     const imageChunks = chunk(scanned.images, (usuarioConfig?.tamano_lote_imagenes) || 100)
     const videoChunks = chunk(scanned.videos, (usuarioConfig?.tamano_lote_videos) || 30)
+    const totalLotes = imageChunks.length + videoChunks.length
+
+    try {
+      sendProgress({
+        type: 'scan:lotePlan',
+        totalLotes,
+        imageLotes: imageChunks.length,
+        videoLotes: videoChunks.length,
+        counts: { images: scanned.images.length, videos: scanned.videos.length }
+      })
+    } catch (_) { }
 
     // helper to write lote dirs progressively (non-blocking yields)
     let idCounter = 1
@@ -248,19 +259,22 @@ ipcMain.handle('mp:scanFolder', async (evt, opts) => {
           tipo,
           criterio: usuarioConfig?.criterio || 'fecha_creacion',
           fecha_creacion: new Date().toISOString(),
-          archivos: files.map((f: string, idx: number) => ({
-            nombre: path.basename(f),
-            ruta_original: f,
-            tamano_bytes: fs.statSync(f).size,
-            fecha_modificacion: fs.statSync(f).mtime.toISOString(),
-            estado: 'pendiente' as 'pendiente',
-            orden: idx + 1
-          }))
+          archivos: files.map((f: string, idx: number) => {
+            const st = fs.statSync(f)
+            return {
+              nombre: path.basename(f),
+              ruta_original: f,
+              tamano_bytes: st.size,
+              fecha_modificacion: st.mtime.toISOString(),
+              estado: 'pendiente' as 'pendiente',
+              orden: idx + 1
+            }
+          })
         }
         await writeLote(lotePath, lote, scanLogger)
         created.push(lotePath)
         // progress + activity log for lote created
-        try { sendProgress({ type: 'scan:loteCreated', lotePath, loteId: idCounter }) } catch (_) { }
+        try { sendProgress({ type: 'scan:loteCreated', lotePath, loteId: idCounter, createdCount: created.length, totalLotes }) } catch (_) { }
         scanLogger.logEvent('scan:loteCreated', { lotePath, loteId: idCounter, tipo }).catch(() => {})
         idCounter++
         // yield to event loop to avoid blocking heavy scans
@@ -272,7 +286,7 @@ ipcMain.handle('mp:scanFolder', async (evt, opts) => {
     await makeLotes(imageChunks as any, 'imagenes')
     await makeLotes(videoChunks as any, 'videos')
 
-    try { sendProgress({ type: 'scan:done', createdCount: created.length }) } catch (_) { }
+    try { sendProgress({ type: 'scan:done', createdCount: created.length, totalLotes }) } catch (_) { }
     scanLogger.logEvent('scan:done', { createdCount: created.length, counts: { images: scanned.images.length, videos: scanned.videos.length } }).catch(() => {})
     return { created, counts: { images: scanned.images.length, videos: scanned.videos.length } }
   } catch (err: any) {

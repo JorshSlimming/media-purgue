@@ -20,8 +20,8 @@ export default function GlobalSummaryModal({ visible, stats, onOpenLibrary, onCl
     const mbAhorrados = (stats.bytes_ahorrados / (1024 * 1024)).toFixed(2)
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center overflow-hidden relative">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl w-full p-6 text-center overflow-hidden relative max-w-md sm:max-w-lg lg:max-w-2xl">
 
                 <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-indigo-500 to-purple-600 z-0"></div>
 
@@ -33,7 +33,7 @@ export default function GlobalSummaryModal({ visible, stats, onOpenLibrary, onCl
                     <h2 className="text-3xl font-extrabold text-gray-800 mb-2">¡Proceso Completado!</h2>
                     <p className="text-gray-500 mb-8">Todos los lotes han sido procesados y tu biblioteca está limpia.</p>
 
-                    <div className="space-y-3 mb-8 text-left">
+                    <div className="space-y-3 mb-6 text-left">
                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
                             <span className="text-gray-600 font-medium">Archivos revisados:</span>
                             <span className="font-bold text-gray-800">{stats.total_archivos_revisados}</span>
@@ -52,7 +52,7 @@ export default function GlobalSummaryModal({ visible, stats, onOpenLibrary, onCl
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-col sm:flex-row">
                         <button
                             onClick={onClose}
                             className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
