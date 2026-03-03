@@ -1,14 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react'
 
+type FileItem = { nombre: string; ruta_original: string; tipo?: string; estado?: 'pendiente' | 'conservar' | 'eliminar'; fecha_modificacion?: string; tamano_bytes?: number }
+
 type Props = {
-  file: { nombre: string; ruta_original: string; tipo?: string; estado?: 'pendiente' | 'conservar' | 'eliminar' }
+  file: FileItem
+  prevFile?: FileItem | null
+  nextFile?: FileItem | null
   onKeep: () => void
   onDelete: () => void
+  onPrev?: () => void
+  onNext?: () => void
+  onRestart?: () => void
+  onFinalize?: () => void
+  showFinalize?: boolean
 }
 
-export default function Swiper({ file, onKeep, onDelete }: Props) {
+export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onPrev, onNext, onRestart, onFinalize, showFinalize }: Props) {
   const isVideo = /\.(mp4|mov|webm|mkv|avi)$/i.test(file.nombre)
   const mediaSrc = `media://local/file?path=${encodeURIComponent(file.ruta_original)}`
+  const [videoReady, setVideoReady] = useState(!isVideo)
   const [tx, setTx] = useState(0)
   const [dragging, setDragging] = useState(false)
   const startX = useRef<number | null>(null)
@@ -16,17 +26,25 @@ export default function Swiper({ file, onKeep, onDelete }: Props) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') {
+      // keep only Arrow keys for actions
+      if (e.key === 'ArrowRight') {
         e.preventDefault()
+        if (isVideo && !videoReady) return
         onKeep()
-      } else if (e.key === 'ArrowLeft' || e.key === 'Delete' || e.key === 'Backspace') {
+      } else if (e.key === 'ArrowLeft') {
         e.preventDefault()
+        if (isVideo && !videoReady) return
         onDelete()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onKeep, onDelete])
+  }, [onKeep, onDelete, isVideo, videoReady])
+
+  // reset videoReady when the file changes so videos start disabled until metadata loads
+  useEffect(() => {
+    setVideoReady(!isVideo)
+  }, [file.ruta_original, isVideo])
 
   function handlePointerDown(e: React.PointerEvent) {
     startX.current = e.clientX
@@ -43,36 +61,49 @@ export default function Swiper({ file, onKeep, onDelete }: Props) {
   function handlePointerUp(e: React.PointerEvent) {
     setDragging(false)
     const threshold = 120
-    if (tx > threshold) onKeep()
-    else if (tx < -threshold) onDelete()
+    if (tx > threshold) {
+      if (!(isVideo && !videoReady)) onKeep()
+    } else if (tx < -threshold) {
+      if (!(isVideo && !videoReady)) onDelete()
+    }
     setTx(0)
     startX.current = null
     try { (e.target as Element).releasePointerCapture(e.pointerId) } catch (_) { }
   }
 
-  const isKept = file.estado === 'conservar'
-  const isDeleted = file.estado === 'eliminar'
+  const isKept = file?.estado === 'conservar'
+  const isDeleted = file?.estado === 'eliminar'
+
+  function formatDate(iso?: string) {
+    if (!iso) return ''
+    try {
+      const d = new Date(iso)
+      return d.toLocaleString()
+    } catch (_) { return iso }
+  }
+
+  function formatBytes(bytes?: number) {
+    if (!bytes && bytes !== 0) return ''
+    const b = Number(bytes || 0)
+    if (b < 1024) return `${b} B`
+    const kb = b / 1024
+    if (kb < 1024) return `${kb.toFixed(1)} KB`
+    const mb = kb / 1024
+    if (mb < 1024) return `${mb.toFixed(1)} MB`
+    const gb = mb / 1024
+    return `${gb.toFixed(2)} GB`
+  }
 
   return (
     <div className="flex flex-col items-center w-full max-w-3xl mx-auto">
-      <div className="bg-white rounded-xl shadow-lg w-full overflow-hidden border border-gray-100 flex flex-col">
-        {/* Header / Filename */}
-        <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
-          <span className="font-medium text-gray-700 truncate mr-2" title={file.nombre}>
-            {file.nombre}
-          </span>
-          {file.estado && file.estado !== 'pendiente' && (
-            <span className={`px-2 py-1 text-xs font-semibold rounded-full uppercase tracking-wide flex-shrink-0 ${isKept ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-              {isKept ? '✅ Conservado' : '🗑️ Eliminado'}
-            </span>
-          )}
-        </div>
+      <div className="bg-white rounded-xl shadow-lg w-full overflow-visible border border-gray-100 flex flex-col relative">
+        {/* Header removed from Swiper; header info moved to App header */}
 
         {/* Media Container */}
         <div
           ref={containerRef}
           className="relative bg-black w-full flex items-center justify-center touch-pan-y overflow-hidden select-none"
-          style={{ height: '60vh', minHeight: '400px' }}
+          style={{ height: '78vh', minHeight: '520px' }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -87,6 +118,30 @@ export default function Swiper({ file, onKeep, onDelete }: Props) {
               ✅
             </div>
           </div>
+
+          {/* Video loading guard: prevent actions until metadata loaded */}
+          {isVideo && !videoReady && (
+            <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
+              <div className="bg-black/60 text-white rounded-md px-4 py-3 flex items-center gap-3">
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                <span>Cargando video… espera antes de marcar</span>
+              </div>
+            </div>
+          )}
+
+          {/* Small previews for prev / next (clickable) */}
+          {prevFile && !/\.(mp4|mov|webm|mkv|avi)$/i.test(prevFile.nombre) && (
+            <button onClick={() => { try { onPrev && onPrev() } catch {} }} title={prevFile.nombre} className={"absolute left-4 bottom-6 w-32 h-40 bg-black/60 rounded-md overflow-hidden flex flex-col items-center justify-start border border-white/10 z-20"}>
+              <img src={"media://local/file?path=" + encodeURIComponent(prevFile.ruta_original || '')} alt={prevFile.nombre} className="w-full h-28 object-contain opacity-100" />
+              <span className="text-xs text-white/90 mt-1">Anterior</span>
+            </button>
+          )}
+          {nextFile && !/\.(mp4|mov|webm|mkv|avi)$/i.test(nextFile.nombre) && (
+            <button onClick={() => { try { onNext && onNext() } catch {} }} title={nextFile.nombre} className={"absolute right-4 bottom-6 w-32 h-40 bg-black/60 rounded-md overflow-hidden flex flex-col items-center justify-start border border-white/10 z-20"}>
+              <img src={"media://local/file?path=" + encodeURIComponent(nextFile.ruta_original || '')} alt={nextFile.nombre} className="w-full h-28 object-contain opacity-100" />
+              <span className="text-xs text-white/90 mt-1">Siguiente</span>
+            </button>
+          )}
 
           {/* Draggable Media */}
           <div
@@ -108,6 +163,7 @@ export default function Swiper({ file, onKeep, onDelete }: Props) {
                 className="max-h-full max-w-full object-contain pointer-events-auto"
                 onError={(e) => {
                   const video = e.target as HTMLVideoElement
+                  setVideoReady(false)
                   console.error('Video error:', {
                     error: video.error,
                     code: video.error?.code,
@@ -117,7 +173,7 @@ export default function Swiper({ file, onKeep, onDelete }: Props) {
                     src: video.src
                   })
                 }}
-                onLoadedMetadata={() => console.log('Video metadata loaded')}
+                onLoadedMetadata={() => { setVideoReady(true); console.log('Video metadata loaded') }}
               />
             ) : (
               <img
@@ -128,30 +184,69 @@ export default function Swiper({ file, onKeep, onDelete }: Props) {
             )}
           </div>
         </div>
+        {/* Prev / Next attached to media section (outside but visible), centered vertically */}
+        <button onClick={() => { try { onPrev && onPrev() } catch {} }} aria-hidden={false} className={"absolute left-[-56px] top-1/2 -translate-y-1/2 p-2 rounded-full bg-white border shadow-md z-30 ring-1 ring-blue-100" + (!prevFile ? ' opacity-40 pointer-events-none' : '')}>
+          <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <button onClick={() => { try { onNext && onNext() } catch {} }} aria-hidden={false} className={"absolute right-[-56px] top-1/2 -translate-y-1/2 p-2 rounded-full bg-white border shadow-md z-30 ring-1 ring-blue-100" + (!nextFile ? ' opacity-40 pointer-events-none' : '')}>
+          <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+        </button>
 
-        {/* Footer Controls */}
-        <div className="p-4 bg-white flex justify-between items-center gap-4 border-t border-gray-100">
-          <button
-            onClick={onDelete}
-            className="flex-1 py-3 px-4 bg-red-50 hover:bg-red-100 text-red-700 font-semibold rounded-lg transition-colors flex flex-col items-center justify-center group"
-          >
-            <span className="text-lg">Eliminar</span>
-            <span className="text-xs text-red-400 group-hover:text-red-500 mt-1">← / Supr</span>
-          </button>
+        {/* Action buttons aligned with Prev/Next (same vertical center) */}
+        {(() => {
+          const actionsDisabled = isVideo && !videoReady
+          return (
+            <button
+              onClick={() => { if (!actionsDisabled) onDelete() }}
+              aria-pressed={isDeleted}
+              aria-disabled={actionsDisabled}
+              className={`absolute left-[-240px] top-[72%] translate-y-0 px-10 py-4 text-white text-lg font-bold rounded-full z-50 transition-transform ${isDeleted ? 'bg-red-800 scale-[0.97] shadow-inner translate-y-1 ring-4 ring-red-300/30' : 'bg-red-600 hover:bg-red-700 shadow-2xl'} ${actionsDisabled ? 'opacity-60 pointer-events-none' : ''}`}
+              style={{ boxShadow: isDeleted ? 'inset 0 4px 8px rgba(0,0,0,0.25)' : '0 16px 40px rgba(220,38,38,0.25)' }}
+            >
+              Eliminar
+            </button>
+          )
+        })()}
 
+        {(() => {
+          const actionsDisabled = isVideo && !videoReady
+          return (
+            <button
+              onClick={() => { if (!actionsDisabled) onKeep() }}
+              aria-pressed={isKept}
+              aria-disabled={actionsDisabled}
+              className={`absolute right-[-240px] top-[72%] translate-y-0 px-10 py-4 text-white text-lg font-bold rounded-full z-50 transition-transform ${isKept ? 'bg-green-800 scale-[0.97] shadow-inner translate-y-1 ring-4 ring-green-300/30' : 'bg-green-600 hover:bg-green-700 shadow-2xl'} ${actionsDisabled ? 'opacity-60 pointer-events-none' : ''}`}
+              style={{ boxShadow: isKept ? 'inset 0 4px 8px rgba(0,0,0,0.22)' : '0 16px 40px rgba(34,197,94,0.22)' }}
+            >
+              Conservar
+            </button>
+          )
+        })()}
+
+        {/* Reiniciar (al llegar al final del lote) - espejo vertical de Eliminar */}
+        {(!nextFile) && (
           <button
-            onClick={onKeep}
-            className="flex-1 py-3 px-4 bg-green-50 hover:bg-green-100 text-green-700 font-semibold rounded-lg transition-colors flex flex-col items-center justify-center group"
+            onClick={() => { try { onRestart && onRestart() } catch {} }}
+            title="Volver a Revisar"
+            className={"absolute left-[-240px] top-[8%] px-6 py-2 text-white text-sm font-semibold rounded-full z-50 bg-blue-600 hover:bg-blue-700 shadow-md whitespace-nowrap"}
           >
-            <span className="text-lg">Conservar</span>
-            <span className="text-xs text-green-400 group-hover:text-green-500 mt-1">→ / Enter</span>
+            Volver a Revisar
           </button>
-        </div>
+        )}
+
+        {/* Finalizar Lote: colocado en espejo vertical respecto a Conservar */}
+        {showFinalize && (
+          <button
+            onClick={() => { try { onFinalize && onFinalize() } catch {} }}
+            title="Finalizar Lote"
+            className={"absolute right-[-240px] top-[8%] px-6 py-2 text-white text-sm font-semibold rounded-full z-50 bg-indigo-600 hover:bg-indigo-700 shadow-md whitespace-nowrap"}
+          >
+            Finalizar Lote
+          </button>
+        )}
       </div>
 
-      <p className="text-xs text-gray-400 mt-4 font-medium tracking-wide w-full text-center">
-        SUGERENCIA: Puedes arrastrar la imagen hacia los lados o usar el teclado.
-      </p>
+      {/* suggestion removed per UX request */}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import path from 'path'
 import fsp from 'fs/promises'
 import { Dirent } from 'fs'
 import fsExtra from 'fs-extra'
+import { ActivityLogger } from './activityLogger'
 
 export async function ensureDir(dirPath: string) {
   await fsp.mkdir(dirPath, { recursive: true })
@@ -21,27 +22,43 @@ export async function readJson<T = any>(filePath: string): Promise<T | null> {
   }
 }
 
-export async function writeJsonAtomic(filePath: string, data: any) {
+export async function writeJsonAtomic(filePath: string, data: any, logger?: ActivityLogger) {
   const tmp = `${filePath}.tmp`
-  await ensureDir(path.dirname(filePath))
-  await fsp.writeFile(tmp, JSON.stringify(data, null, 2), 'utf8')
-  await fsp.rename(tmp, filePath)
+  try {
+    await ensureDir(path.dirname(filePath))
+    await fsp.writeFile(tmp, JSON.stringify(data, null, 2), 'utf8')
+    await fsp.rename(tmp, filePath)
+  } catch (err: any) {
+    try { if (logger) await logger.logError('error:writeJsonAtomic', err, { filePath }) } catch (_) {}
+    throw err
+  }
 }
 
-export async function copyFile(src: string, dest: string) {
-  await ensureDir(path.dirname(dest))
-  await fsExtra.copy(src, dest, { overwrite: false, errorOnExist: false })
+export async function copyFile(src: string, dest: string, logger?: ActivityLogger) {
+  try {
+    await ensureDir(path.dirname(dest))
+    await fsExtra.copy(src, dest, { overwrite: false, errorOnExist: false })
+  } catch (err: any) {
+    try { if (logger) await logger.logError('error:copyFile', err, { src, dest }) } catch (_) {}
+    throw err
+  }
 }
 
-export async function moveFile(src: string, dest: string) {
-  await ensureDir(path.dirname(dest))
-  await fsExtra.move(src, dest, { overwrite: false })
+export async function moveFile(src: string, dest: string, logger?: ActivityLogger) {
+  try {
+    await ensureDir(path.dirname(dest))
+    await fsExtra.move(src, dest, { overwrite: false })
+  } catch (err: any) {
+    try { if (logger) await logger.logError('error:moveFile', err, { src, dest }) } catch (_) {}
+    throw err
+  }
 }
 
-export async function unlinkFile(p: string) {
+export async function unlinkFile(p: string, logger?: ActivityLogger) {
   try {
     await fsp.unlink(p)
-  } catch (err) {
+  } catch (err: any) {
+    try { if (logger) await logger.logError('error:unlinkFile', err, { file: p }) } catch (_) {}
     // ignore
   }
 }

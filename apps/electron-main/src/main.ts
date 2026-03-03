@@ -14,6 +14,10 @@ import { writeLogJSON, readLogJSON, listLogs } from './logger'
 import fs from 'fs'
 import fsExtra from 'fs-extra'
 import os from 'os'
+import { ActivityLogger } from './activityLogger'
+import { appendAppLogHandler, readAppLogHandler } from './ipcHandlers'
+import { updateArchivoEstadoHandler } from './handlers/updateArchivoEstado'
+import { saveUsuarioConfigHandler } from './handlers/saveUsuarioConfig'
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -53,6 +57,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true
@@ -63,6 +68,11 @@ function createWindow() {
   // allow overriding renderer URL via env for tests (e.g. static server)
   const rendererUrl = process.env.MP_RENDERER_URL || 'http://localhost:5173/'
   win.loadURL(rendererUrl)
+  // Ensure the native menu bar is hidden (useful on Windows/Linux)
+  try {
+    win.setAutoHideMenuBar(true)
+    win.setMenuBarVisibility(false)
+  } catch (_) {}
 }
 
 app.whenReady().then(() => {
@@ -96,8 +106,29 @@ app.whenReady().then(() => {
           .audioCodec('libvorbis')
           .outputOptions(['-deadline realtime', '-cpu-used 8', '-b:v 1500k'])
           .on('error', (err: Error) => {
-            console.error('[media protocol] ffmpeg transcode error:', err.message)
-          })
+              try {
+                // attempt to locate nearest .media-purgue for project context
+                function findMediaPurgueAncestor(fp: string) {
+                  let dir = path.dirname(fp)
+                  const root = path.parse(dir).root
+                  while (dir && dir !== root) {
+                    const candidate = path.join(dir, '.media-purgue')
+                    if (fs.existsSync(candidate)) return candidate
+                    dir = path.dirname(dir)
+                  }
+                  return null
+                }
+                const mpRoot = findMediaPurgueAncestor(filePath)
+                if (mpRoot) {
+                  const projectRoot = path.resolve(mpRoot, '..')
+                  try {
+                    const logger = new ActivityLogger(projectRoot)
+                    logger.logError('error:mediaProtocol', err, { file: filePath }).catch(() => {})
+                  } catch (_) {}
+                }
+              } catch (_) {}
+              console.error('[media protocol] ffmpeg transcode error:', err.message)
+            })
           .pipe() as NodeJS.ReadableStream
 
         const webStream = new ReadableStream({
@@ -133,6 +164,9 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+  // delegate to testable handler implementations
+  ipcMain.handle('mp:appendAppLog', async (evt, rootPath: string, entry: any) => appendAppLogHandler(rootPath, entry))
+  ipcMain.handle('mp:readAppLog', async (evt, rootPath: string, filters?: { types?: string[]; searchText?: string }) => readAppLogHandler(rootPath, filters))
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -162,6 +196,9 @@ ipcMain.handle('mp:scanFolder', async (evt, opts) => {
 
   // save usuario.json
   const configPath = path.join(configDir, 'usuario.json')
+  const scanLogger = new ActivityLogger(rootPath)
+  // non-blocking: attempt to record that a scan started
+  scanLogger.logEvent('scan:starting', { includeSubfolders, usuarioConfig }).catch(() => {})
   await writeJsonAtomic(configPath, usuarioConfig || {
     tamano_lote_imagenes: 100,
     tamano_lote_videos: 30,
@@ -169,64 +206,73 @@ ipcMain.handle('mp:scanFolder', async (evt, opts) => {
     nombre_biblioteca: 'Biblioteca_Final',
     ubicacion_biblioteca: '../',
     incluir_subcarpetas: true
-  })
+  }, scanLogger)
 
-  const scanned = await scanMediaFiles(rootPath, includeSubfolders)
-
-  // emit progress: scanned counts
   try {
-    sendProgress({ type: 'scan:counts', counts: { images: scanned.images.length, videos: scanned.videos.length } })
-  } catch (_) { }
+    const scanned = await scanMediaFiles(rootPath, includeSubfolders)
 
-  // create simple lotes: split arrays into chunks and write them progressively
-  function chunk<T>(arr: T[], size: number) {
-    const out: T[][] = []
-    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
-    return out
-  }
+    // emit progress: scanned counts
+    try {
+      sendProgress({ type: 'scan:counts', counts: { images: scanned.images.length, videos: scanned.videos.length } })
+    } catch (_) { }
 
-  const imageChunks = chunk(scanned.images, (usuarioConfig?.tamano_lote_imagenes) || 100)
-  const videoChunks = chunk(scanned.videos, (usuarioConfig?.tamano_lote_videos) || 30)
-
-  // helper to write lote dirs progressively (non-blocking yields)
-  let idCounter = 1
-  const created: string[] = []
-
-  async function makeLotes(chunks: string[][], tipo: 'imagenes' | 'videos') {
-    for (let i = 0; i < chunks.length; i++) {
-      const files = chunks[i] || []
-      const loteDir = path.join(proc, `${tipo}_Lote_${String(idCounter).padStart(4, '0')}`)
-      await ensureDir(loteDir)
-      const lotePath = path.join(loteDir, `lote_${String(idCounter).padStart(4, '0')}.json`)
-      const lote: Lote = {
-        lote_id: idCounter,
-        tipo,
-        criterio: usuarioConfig?.criterio || 'fecha_creacion',
-        fecha_creacion: new Date().toISOString(),
-        archivos: files.map((f: string, idx: number) => ({
-          nombre: path.basename(f),
-          ruta_original: f,
-          tamano_bytes: fs.statSync(f).size,
-          fecha_modificacion: fs.statSync(f).mtime.toISOString(),
-          estado: 'pendiente' as 'pendiente',
-          orden: idx + 1
-        }))
-      }
-      await writeLote(lotePath, lote)
-      created.push(lotePath)
-      try { sendProgress({ type: 'scan:loteCreated', lotePath, loteId: idCounter }) } catch (_) { }
-      idCounter++
-      // yield to event loop to avoid blocking heavy scans
-      await new Promise(r => setTimeout(r, 0))
+    // create simple lotes: split arrays into chunks and write them progressively
+    function chunk<T>(arr: T[], size: number) {
+      const out: T[][] = []
+      for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+      return out
     }
+
+    const imageChunks = chunk(scanned.images, (usuarioConfig?.tamano_lote_imagenes) || 100)
+    const videoChunks = chunk(scanned.videos, (usuarioConfig?.tamano_lote_videos) || 30)
+
+    // helper to write lote dirs progressively (non-blocking yields)
+    let idCounter = 1
+    const created: string[] = []
+
+    async function makeLotes(chunks: string[][], tipo: 'imagenes' | 'videos') {
+      for (let i = 0; i < chunks.length; i++) {
+        const files = chunks[i] || []
+        const loteDir = path.join(proc, `${tipo}_Lote_${String(idCounter).padStart(4, '0')}`)
+        await ensureDir(loteDir)
+        const lotePath = path.join(loteDir, `lote_${String(idCounter).padStart(4, '0')}.json`)
+        const lote: Lote = {
+          lote_id: idCounter,
+          tipo,
+          criterio: usuarioConfig?.criterio || 'fecha_creacion',
+          fecha_creacion: new Date().toISOString(),
+          archivos: files.map((f: string, idx: number) => ({
+            nombre: path.basename(f),
+            ruta_original: f,
+            tamano_bytes: fs.statSync(f).size,
+            fecha_modificacion: fs.statSync(f).mtime.toISOString(),
+            estado: 'pendiente' as 'pendiente',
+            orden: idx + 1
+          }))
+        }
+        await writeLote(lotePath, lote, scanLogger)
+        created.push(lotePath)
+        // progress + activity log for lote created
+        try { sendProgress({ type: 'scan:loteCreated', lotePath, loteId: idCounter }) } catch (_) { }
+        scanLogger.logEvent('scan:loteCreated', { lotePath, loteId: idCounter, tipo }).catch(() => {})
+        idCounter++
+        // yield to event loop to avoid blocking heavy scans
+        await new Promise(r => setTimeout(r, 0))
+      }
+    }
+
+    // start generating lotes for both types; do not await both sequentially to allow interleaving
+    await makeLotes(imageChunks as any, 'imagenes')
+    await makeLotes(videoChunks as any, 'videos')
+
+    try { sendProgress({ type: 'scan:done', createdCount: created.length }) } catch (_) { }
+    scanLogger.logEvent('scan:done', { createdCount: created.length, counts: { images: scanned.images.length, videos: scanned.videos.length } }).catch(() => {})
+    return { created, counts: { images: scanned.images.length, videos: scanned.videos.length } }
+  } catch (err: any) {
+    // record errors related to the scan process but do not throw away error details
+    try { scanLogger.logError('error:scanFolder', err, { rootPath }).catch(() => {}) } catch (_) {}
+    throw err
   }
-
-  // start generating lotes for both types; do not await both sequentially to allow interleaving
-  await makeLotes(imageChunks as any, 'imagenes')
-  await makeLotes(videoChunks as any, 'videos')
-
-  try { sendProgress({ type: 'scan:done', createdCount: created.length }) } catch (_) { }
-  return { created, counts: { images: scanned.images.length, videos: scanned.videos.length } }
 })
 
 ipcMain.handle('mp:inspectFolder', async (evt, opts) => {
@@ -247,17 +293,7 @@ ipcMain.handle('mp:readLote', async (evt, lotePath: string) => {
   return readLote(lotePath)
 })
 
-ipcMain.handle('mp:updateArchivoEstado', async (evt, args) => {
-  const { lotePath, orden, nuevoEstado } = args || {}
-  if (!lotePath) throw new Error('lotePath required')
-  const lote = await readLote(lotePath)
-  if (!lote) throw new Error('lote not found')
-  const entry = lote.archivos.find(a => a.orden === orden)
-  if (!entry) throw new Error('archivo not found in lote')
-  entry.estado = nuevoEstado
-  await writeLote(lotePath, lote)
-  return { ok: true }
-})
+ipcMain.handle('mp:updateArchivoEstado', async (evt, args) => updateArchivoEstadoHandler(args))
 
 ipcMain.handle('mp:listStaging', async (evt, root: string) => {
   const staging = path.join(root, '.media-purgue', '02_Biblioteca_Final', '.staging')
@@ -303,6 +339,10 @@ ipcMain.handle('mp:listLogs', async (evt, mpRoot: string) => {
 ipcMain.handle('mp:readLog', async (evt, mpRoot: string, fileName: string) => {
   const fp = path.join(mpRoot, 'Logs', fileName)
   return readLogJSON(fp)
+})
+
+ipcMain.handle('mp:saveUsuarioConfig', async (evt, rootPath: string, usuarioConfig: any) => {
+  return saveUsuarioConfigHandler(rootPath, usuarioConfig)
 })
 
 import { finalizeLibrary } from './finalizeLibrary'

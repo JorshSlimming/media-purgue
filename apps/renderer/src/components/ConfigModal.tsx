@@ -15,6 +15,8 @@ export default function ConfigModal({ visible, counts, defaultConfig, onCancel, 
   const [criterio, setCriterio] = useState(defaultConfig?.criterio ?? 'fecha_creacion')
   const [libName, setLibName] = useState(defaultConfig?.nombre_biblioteca ?? 'Biblioteca_Final')
   const [libLocation, setLibLocation] = useState(defaultConfig?.ubicacion_biblioteca ?? '../')
+  const [secPerImage, setSecPerImage] = useState<number>(defaultConfig?.secondsPerImage ?? 2.5)
+  const [secPerVideo, setSecPerVideo] = useState<number>(defaultConfig?.secondsPerVideo ?? 20)
 
   if (!visible) return null
 
@@ -24,12 +26,15 @@ export default function ConfigModal({ visible, counts, defaultConfig, onCancel, 
   }
 
   function handleSave() {
+    // notify parent about simple mode change (if provided)
     onConfirm({
       tamano_lote_imagenes: imgSize,
       tamano_lote_videos: vidSize,
       criterio,
       nombre_biblioteca: libName,
-      ubicacion_biblioteca: libLocation
+      ubicacion_biblioteca: libLocation,
+      secondsPerImage: secPerImage,
+      secondsPerVideo: secPerVideo
     })
   }
 
@@ -42,10 +47,6 @@ export default function ConfigModal({ visible, counts, defaultConfig, onCancel, 
         </div>
 
         <div className="space-y-6">
-          <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm">
-            <p><strong>Imágenes encontradas:</strong> {counts.images}</p>
-            <p><strong>Videos encontrados:</strong> {counts.videos}</p>
-          </div>
 
           <div>
             <h3 className="font-semibold text-gray-700 mb-2">📦 Tamaño de lote</h3>
@@ -63,22 +64,43 @@ export default function ConfigModal({ visible, counts, defaultConfig, onCancel, 
 
           <div>
             <h3 className="font-semibold text-gray-700 mb-2">🔽 Criterio de orden</h3>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="criterio" value="fecha_creacion" checked={criterio === 'fecha_creacion'} onChange={e => setCriterio(e.target.value)} className="text-indigo-600 focus:ring-indigo-500" />
-                <span className="text-sm">Fecha de creación</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="criterio" value="tamano" checked={criterio === 'tamano'} onChange={e => setCriterio(e.target.value)} className="text-indigo-600 focus:ring-indigo-500" />
-                <span className="text-sm">Tamaño</span>
-              </label>
+            <div className="grid grid-cols-2 gap-4 items-start">
+              <div className="flex justify-between items-center w-full">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="criterio" value="fecha_creacion" checked={criterio === 'fecha_creacion'} onChange={e => setCriterio(e.target.value)} className="text-indigo-600 focus:ring-indigo-500" />
+                  <span className="text-sm whitespace-nowrap">Fecha de creación</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="criterio" value="tamano" checked={criterio === 'tamano'} onChange={e => setCriterio(e.target.value)} className="text-indigo-600 focus:ring-indigo-500" />
+                  <span className="text-sm whitespace-nowrap">Tamaño</span>
+                </label>
+              </div>
+
+              <div />
             </div>
           </div>
 
           <div>
-            <h3 className="font-semibold text-gray-700 mb-2">📛 Nombre de biblioteca final</h3>
+            <h3 className="font-semibold text-gray-700 mb-2">📛 Nombre carpeta final</h3>
             <input type="text" value={libName} onChange={e => setLibName(e.target.value)} className="w-full border rounded px-3 py-2 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
           </div>
+
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-2">⏱️ Tiempo estimado por archivo (segundos)</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Imágenes (s)</label>
+                <input type="number" step="0.1" min="0" value={secPerImage} onChange={e => setSecPerImage(Number(e.target.value))} className="w-full border rounded px-3 py-2 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Videos (s)</label>
+                <input type="number" step="0.1" min="0" value={secPerVideo} onChange={e => setSecPerVideo(Number(e.target.value))} className="w-full border rounded px-3 py-2 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Los tiempos se usan para estimar el tiempo por lote y se actualizan al guardar.</p>
+          </div>
+
+          {/* Modo simple moved to start area; removed from advanced modal */}
 
           <div>
             <h3 className="font-semibold text-gray-700 mb-2">📍 Ubicación de la carpeta final</h3>
@@ -92,7 +114,7 @@ export default function ConfigModal({ visible, counts, defaultConfig, onCancel, 
 
         <div className="mt-8 flex justify-end gap-3 border-t pt-4">
           <button onClick={onCancel} className="px-5 py-2 border rounded text-gray-600 hover:bg-gray-50 font-medium">Cancelar</button>
-          <button onClick={handleSave} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-medium shadow-sm transition-colors">Guardar y Generar Lotes</button>
+          <button onClick={handleSave} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-medium shadow-sm transition-colors">Guardar</button>
         </div>
       </div>
     </div>

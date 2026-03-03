@@ -1,4 +1,5 @@
 import { readJson, ensureDir, writeJsonAtomic } from './fsManager'
+import { ActivityLogger } from './activityLogger'
 import path from 'path'
 
 export interface LoteArchivo {
@@ -22,8 +23,8 @@ export async function readLote(filePath: string): Promise<Lote | null> {
   return readJson<Lote>(filePath)
 }
 
-export async function writeLote(filePath: string, lote: Lote) {
+export async function writeLote(filePath: string, lote: Lote, logger?: ActivityLogger) {
   await ensureDir(path.dirname(filePath))
-  await writeJsonAtomic(filePath, lote)
+  await writeJsonAtomic(filePath, lote, logger)
 }
 

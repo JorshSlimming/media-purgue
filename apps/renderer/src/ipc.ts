@@ -81,3 +81,18 @@ export async function listLogs(mpRoot: string) {
   if (!has('listLogs')) return Promise.reject(new Error('IPC not available'))
   return getMp().listLogs(mpRoot)
 }
+
+export async function appendAppLog(mpRoot: string, entry: any) {
+  if (!has('appendAppLog')) return Promise.reject(new Error('IPC not available'))
+  return getMp().appendAppLog(mpRoot, entry)
+}
+
+export async function saveUsuarioConfig(rootPath: string, usuarioConfig: any) {
+  if (!has('saveUsuarioConfig')) return Promise.reject(new Error('IPC not available'))
+  return getMp().saveUsuarioConfig(rootPath, usuarioConfig)
+}
+
+export async function readAppLog(mpRoot: string) {
+  if (!has('readAppLog')) return Promise.reject(new Error('IPC not available'))
+  return getMp().readAppLog(mpRoot)
+}
