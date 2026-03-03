@@ -1,6 +1,6 @@
 # Media Purgue
 
-![Media Purgue](apps/renderer/dist/logo.png)
+<img src="logo.png" alt="Media Purgue" width="120" />
 
 Aplicación para revisar y limpiar grandes colecciones de fotos y videos mediante lotes JSON, con un flujo transaccional seguro y una UI de revisión rápida (swipe o teclado).
 
