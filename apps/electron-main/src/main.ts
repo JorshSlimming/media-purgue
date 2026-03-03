@@ -71,10 +71,16 @@ function createWindow() {
     }
   })
 
-  // In dev this can point to localhost vite server
-  // allow overriding renderer URL via env for tests (e.g. static server)
-  const rendererUrl = process.env.MP_RENDERER_URL || 'http://localhost:5173/'
-  win.loadURL(rendererUrl)
+  // In production load built renderer files, in dev use Vite server.
+  const rendererUrl = process.env.MP_RENDERER_URL
+  if (rendererUrl) {
+    win.loadURL(rendererUrl)
+  } else if (app.isPackaged) {
+    const indexPath = path.join(__dirname, '../../renderer/dist/index.html')
+    win.loadFile(indexPath)
+  } else {
+    win.loadURL('http://localhost:5173/')
+  }
   // Ensure the native menu bar is hidden (useful on Windows/Linux)
   try {
     win.setAutoHideMenuBar(true)

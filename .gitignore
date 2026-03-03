@@ -22,6 +22,9 @@ coverage-
 apps/**/dist/
 packages/**/dist/
 tests/e2e/fixtures/
+release/
+*.blockmap
+*-unpacked/
 
 # Playwright
 playwright-report/
