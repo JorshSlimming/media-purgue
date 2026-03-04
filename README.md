@@ -1,301 +1,196 @@
 # Media Purgue
 
-<img src="logo.png" alt="Media Purgue" width="120" />
+Electron + React app to review and clean large photo/video collections via batch JSON workflows with transactional safety.
 
-Aplicación para revisar y limpiar grandes colecciones de fotos y videos mediante lotes JSON, con un flujo transaccional seguro y una UI de revisión rápida (swipe o teclado).
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Electron](https://img.shields.io/badge/Electron-26.0.0-47848F?logo=electron)](https://www.electronjs.org/)
+[![React](https://img.shields.io/badge/React-18.0.0-61DAFB?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0.0-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 
-Rápido (Quick start):
+## Quick start
 
 ```bash
-# instalar deps
+# Install dependencies
 npm install
 
-# modo desarrollo (renderer + main + electron)
+# Run in development mode (renderer + main + electron)
 npm run dev
 
-# build + empaquetado (Windows x64 NSIS)
+# Build and package for Windows
 npm run dist:win
 ```
 
-Descargas y binarios: revisa la sección *Releases* del repositorio (se incluye el instalador `Media Purgue Setup <version>.exe`).
+## Overview
 
+Media Purgue helps you efficiently review and clean large media collections through:
 
+- **Batch JSON workflows** - Process files in configurable batches without duplicating binaries
+- **Transactional safety** - Uses `.staging` folder to prevent data loss during operations
+- **Fast review UI** - Swipe or keyboard navigation for quick decisions
+- **Detailed logging** - Per-batch and global logs for auditability
 
-```mermaid
-stateDiagram-v2
-    [*] --> Creado: Se genera JSON del lote
-
-    Creado --> EnRevision: Usuario abre el lote
-    EnRevision --> EnRevision: Usuario revisa archivos<br/>(cambia estados en JSON)
-    EnRevision --> Completado: Todos los archivos tienen<br/>estado "conservar" o "eliminar"
-
-    Completado --> Cerrando: Usuario inicia cierre
-    Cerrando --> EnStaging: Copiando/moviendo a .staging
-    EnStaging --> Confirmando: Moviendo staging a biblioteca
-    Confirmando --> Eliminando: Eliminando originales
-    Eliminando --> Cerrado: Operaciones exitosas<br/>(se elimina lote y JSON)
-
-    Cerrando --> ErrorEnStaging: Fallo al copiar a staging
-    ErrorEnStaging --> Cerrando: Usuario reintenta<br/>(se limpia staging)
-    Confirmando --> ErrorEnConfirmacion: Fallo al mover staging
-    ErrorEnConfirmacion --> Cerrando: Usuario reintenta<br/>(staging intacto)
-
-    Cerrado --> [*]
-
-    note right of Creado: También se puede forzar cierre<br/>aunque queden pendientes
-    note right of ErrorEnConfirmacion: Queda carpeta .staging
-```
-
-### **Secuencia para el cierre transaccional**
-
-```mermaid
-sequenceDiagram
-    participant Usuario
-    participant Interfaz as Interfaz React
-    participant GestorLote as Gestor de Lote (Node.js)
-    participant Staging as Carpeta .staging
-    participant FS as Sistema de Archivos
-
-    Usuario->>Interfaz: Hace clic en "Cerrar lote"
-    Interfaz->>GestorLote: solicitarCierre(loteId)
-
-    Note over GestorLote: Paso 1: Leer JSON y preparar listas
-
-    loop Por cada archivo a conservar
-        GestorLote->>FS: copiar/mover a .staging
-        FS-->>GestorLote: resultado
-        alt Si falla
-            GestorLote->>FS: limpiar .staging
-            GestorLote->>Interfaz: error
-            Interfaz->>Usuario: "Error al copiar a staging"
-        end
-    end
-
-    Note over GestorLote: Si todo fue bien en staging
-    loop Mover de staging a biblioteca final
-        GestorLote->>FS: rename (move) a destino final
-        FS-->>GestorLote: resultado
-        alt Si falla
-            GestorLote->>Interfaz: error
-            Interfaz->>Usuario: "Error al mover a biblioteca, reintentar"
-        end
-    end
-
-    Note over GestorLote: Si todo fue bien en movimientos
-    loop Por cada archivo a eliminar
-        GestorLote->>FS: eliminar original
-        FS-->>GestorLote: resultado
-        alt Si falla
-            GestorLote->>Interfaz: error (parcial)
-            Interfaz->>Usuario: "Error al eliminar algunos archivos"
-        end
-    end
-
-    GestorLote->>FS: generar log
-    FS-->>GestorLote: log guardado
-    GestorLote->>FS: eliminar JSON y carpeta del lote
-    FS-->>GestorLote: eliminado
-    GestorLote->>Interfaz: cierreCompletado(resumen)
-    Interfaz->>Usuario: mostrar resumen del lote
-```
-
-### **Componentes (arquitectura)**
-
-```mermaid
-graph TB
-    subgraph "Electron Main Process"
-        Main[Main Process<br/>Node.js]
-        FileSystem[File System Module<br/>fs, fs.promises]
-        JSONManager[JSON Manager<br/>lectura/escritura]
-        StagingManager[Staging Manager<br/>manejo de .staging]
-        Logger[Logger<br/>logs y métricas]
-    end
-
-    subgraph "Electron Renderer Process"
-        UI[UI React]
-        Components[Componentes:<br/>Swiper, Preview, Config]
-        State[Estado global<br/>Context/Zustand]
-    end
-
-    subgraph "Almacenamiento"
-        Dir[Carpeta de origen]
-        MediaPurge[".media-purgue"]
-        ConfigFile[usuario.json]
-        LotFolders[Carpetas de lotes<br/>con archivos JSON]
-        LogFiles[Archivos .log]
-        FinalLibrary[Biblioteca Final<br/>archivos conservados + global.json]
-        StagingFolder[Carpeta .staging<br/>dentro de Biblioteca_Final]
-    end
-
-    UI --> Components
-    Components --> State
-    State -- IPC --> Main
-    Main --> FileSystem
-    Main --> JSONManager
-    Main --> StagingManager
-    Main --> Logger
-
-    FileSystem --> Dir
-    FileSystem --> MediaPurge
-    JSONManager --> ConfigFile
-    JSONManager --> LotFolders
-    StagingManager --> StagingFolder
-    Logger --> LogFiles
-
-    FileSystem --> FinalLibrary
-```
-
----
-
-## **Mockups**
-
-### Pantalla principal (inicio)
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  📸 Media Purge                                      │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  📁 Carpeta a analizar:                              │
-│  ┌───────────────────────────────────────────────┐ │
-│  │                                                 │ │
-│  │ [Seleccionar carpeta...]                       │ │
-│  └───────────────────────────────────────────────┘ │
-│                                                     │
-│  ⚙️ Configuración actual (toca el icono para cambiar)│
-│  ┌───────────────────────────────────────────────┐ │
-│  │  Tamaño de lote: 100 imágenes | 30 videos     │ │
-│  │  Criterio: Fecha de creación                  │ │
-│  │  Nombre biblioteca: Biblioteca_Final          │ │
-│  │  Ubicación: (misma carpeta de origen)         │ │
-│  │  Incluir subcarpetas: Sí                       │ │
-│  └───────────────────────────────────────────────┘ │
-│                                                     │
-│  📊 Estimación de lotes:                            │
-│  ┌───────────────────────────────────────────────┐ │
-│  │  (se actualizará al seleccionar carpeta)      │ │
-│  └───────────────────────────────────────────────┘ │
-│                                                     │
-│  📍 La biblioteca final se creará en la ubicación   │
-│     configurada (por defecto, junto a la carpeta    │
-│     de origen).                                      │
-│                                                     │
-│  ┌─────────────────────────────────────────────┐   │
-│  │              ▶ Iniciar proceso               │   │
-│  └─────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────┘
+Carpeta_de_origen/
+ ├── (your photos/videos)
+ └── .media-purgue/
+      ├── 01_Procesando/       # Batch JSON files only
+      ├── 02_Biblioteca_Final/ # Staging → final library
+      ├── Config/              # usuario.json
+      └── Logs/                # Per-batch logs + global.json
 ```
 
-### Ventana de configuración (modal)
+### Stack
 
-```
-┌─────────────────────────────────────────────────────┐
-│  ⚙️ Configuración avanzada                           │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  📦 Tamaño de lote:                                 │
-│     Imágenes:  ┌─────┐  Videos:  ┌─────┐           │
-│                │ 100 │           │ 30  │           │
-│                └─────┘           └─────┘           │
-│                                                     │
-│  🔽 Criterio de orden:                              │
-│     ◎ Fecha de creación    ○ Tamaño                 │
-│                                                     │
-│  📛 Nombre de biblioteca final:                     │
-│  ┌───────────────────────────────────────────────┐ │
-│  │ Biblioteca_Final                               │ │
-│  └───────────────────────────────────────────────┘ │
-│                                                     │
-│  📂 Incluir subcarpetas:  [✔️] Sí                    │
-│                                                     │
-│  📍 Ubicación de la carpeta final:                  │
-│  ┌───────────────────────────────────────────────┐ │
-│  │ C:/Users/Usuario/                             │ │
-│  └───────────────────────────────────────────────┘ │
-│  [ Examinar... ]                                   │
-│                                                     │
-│  ┌─────────┐  ┌─────────┐                          │
-│  │ Cancelar│  │ Guardar │                          │
-│  └─────────┘  └─────────┘                          │
-└─────────────────────────────────────────────────────┘
-```
+- **Main process**: Node.js + Electron
+- **Renderer**: React 18 + TypeScript + Vite
+- **State**: Zustand
+- **Styling**: Tailwind CSS
+- **Video transcoding**: ffmpeg-static + fluent-ffmpeg
 
-### Pantalla de revisión (swipe)
+## Features
 
-```
-┌─────────────────────────────────────────────────────┐
-│  📌 Lote: Imágenes 0001                     🔄 3/100│
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  ┌─────────────────────────────────────────────┐   │
-│  │                                             │   │
-│  │              🖼️ Vista previa                 │   │
-│  │               de imagen/video               │   │
-│  │                                             │   │
-│  │         [Cargando desde ruta original]      │   │
-│  │                                             │   │
-│  └─────────────────────────────────────────────┘   │
-│                                                     │
-│  📄 Nombre: vacaciones.jpg                          │
-│  💾 Tamaño: 4.2 MB   📅 Fecha: 2023-08-15          │
-│                                                     │
-│  ┌──────────┐    ┌────────┐    ┌──────────┐       │
-│  │  ← Elim. │    │ Saltar │    │ Conservar→│       │
-│  └──────────┘    └────────┘    └──────────┘       │
-│                                                     │
-│  ⌨️ Atajos:  ← (Eliminar)  → (Conservar)            │
-│            ⬆️ ⬇️ (Navegar)  Enter (Conservar)       │
-│            Delete (Eliminar)                        │
-└─────────────────────────────────────────────────────┘
+| Feature | Description |
+|---------|-------------|
+| Batch scanning | Auto-scan folders and create JSON batches |
+| Configurable batch size | Separate settings for images (default: 100) and videos (default: 30) |
+| Transactional close | Copy → rename → delete with rollback via `.staging` |
+| Multi-language | Spanish/English with auto-detection |
+| Session persistence | Resume work after closing the app |
+| Progress tracking | Real-time progress and ETA for batch creation |
+| Auto-finalize | Automatically finalize library when all batches complete |
+
+## JSON contracts
+
+See `docs/json-contracts.md` for full specifications. Key formats:
+
+**usuario.json** (configuration)
+```json
+{
+  "tamano_lote_imagenes": 100,
+  "tamano_lote_videos": 30,
+  "criterio": "fecha_creacion",
+  "nombre_biblioteca": "Biblioteca_Final",
+  "ubicacion_biblioteca": "../",
+  "incluir_subcarpetas": true
+}
 ```
 
-### Pantalla de resumen de lote (al cerrar)
-
-```
-┌─────────────────────────────────────────────────────┐
-│  📊 Resumen del lote 0001                           │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  ✅ Conservados:  45 archivos  (120 MB)             │
-│  🗑️ Eliminados:   55 archivos  (180 MB)             │
-│                                                     │
-│  ┌─────────────────────────────────────────────┐   │
-│  │  Detalles:                                   │   │
-│  │  - 30 imágenes conservadas (80 MB)           │   │
-│  │  - 15 videos conservados (40 MB)             │   │
-│  │  - 40 imágenes eliminadas (120 MB)           │   │
-│  │  - 15 videos eliminados (60 MB)              │   │
-│  └─────────────────────────────────────────────┘   │
-│                                                     │
-│  ┌─────────────┐  ┌─────────────┐                  │
-│  │ Ver detalles│  │ Continuar   │                  │
-│  └─────────────┘  └─────────────┘                  │
-└─────────────────────────────────────────────────────┘
+**lote_XXXX.json** (batch file)
+```json
+{
+  "lote_id": 1,
+  "tipo": "imagenes",
+  "criterio": "fecha_creacion",
+  "fecha_creacion": "2024-01-01T10:00:00Z",
+  "archivos": [
+    {
+      "nombre": "vacaciones.jpg",
+      "ruta_original": "C:/Users/Usuario/Fotos/vacaciones.jpg",
+      "tamano_bytes": 4200000,
+      "fecha_modificacion": "2023-08-15T14:30:00Z",
+      "estado": "pendiente",
+      "orden": 1
+    }
+  ]
+}
 ```
 
-### Pantalla de progreso global (al finalizar)
+**global.json** (final summary)
+```json
+{
+  "procesos": 7,
+  "archivos_procesados": 350,
+  "conservados": 160,
+  "eliminados": 190,
+  "espacio_total_conservado_bytes": 1342177280,
+  "espacio_total_liberado_bytes": 335544320,
+  "generado_en": "2024-01-02T12:10:00Z"
+}
+```
+
+## Project structure
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  🎉 ¡Proceso completado!                             │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  Resumen global:                                    │
-│                                                     │
-│     Archivos procesados: 323                        │
-│     Espacio liberado:    320 MB                     │
-│     Espacio en biblioteca: 1.25 GB                  │
-│                                                     │
-│  📁 Biblioteca final ubicada en:                    │
-│  ┌───────────────────────────────────────────────┐ │
-│  │ C:/Users/Usuario/Biblioteca_Final             │ │
-│  └───────────────────────────────────────────────┘ │
-│                                                     │
-│  🧹 La carpeta temporal .media-purgue ha sido       │
-│     eliminada.                                      │
-│                                                     │
-│  ┌─────────────┐  ┌─────────────────────────────┐  │
-│  │   Cerrar    │  │  Abrir Biblioteca_Final 📂  │  │
-│  └─────────────┘  └─────────────────────────────┘  │
-└─────────────────────────────────────────────────────┘
+media-purgue/
+├── apps/
+│   ├── electron-main/      # Main process (Node/Electron)
+│   └── renderer/           # React + TypeScript UI
+├── packages/
+│   └── shared-types/       # TypeScript interfaces
+├── tests/
+│   ├── unit/               # Unit tests
+│   ├── property/           # Property-based tests
+│   └── e2e/                # Playwright E2E tests
+├── docs/
+│   ├── project-overview.md # Full project spec
+│   ├── json-contracts.md   # JSON format specifications
+│   └── samples/            # Example JSON files
+└── scripts/                # Build and utility scripts
 ```
+
+## Development
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+
+### Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+```
+
+This launches:
+1. Vite dev server on `http://localhost:5173`
+2. TypeScript compiler in watch mode for main process
+3. Electron app
+
+### Build
+
+```bash
+# Build renderer and main
+npm run build
+
+# Package for current platform
+npm run dist
+
+# Package for specific platform
+npm run dist:win      # Windows (NSIS)
+npm run dist:linux    # Linux (AppImage, deb)
+```
+
+### Testing
+
+```bash
+# Run unit and property tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# Run E2E tests
+npm run test:e2e
+```
+
+## Documentation
+
+- `docs/project-overview.md` - Full project specification and workflow
+- `docs/json-contracts.md` - JSON format specifications
+- `docs/dev-windows.md` - Windows-specific development notes
+- `docs/samples/` - Example JSON files
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Acknowledgments
+
+- Built with [Electron](https://www.electronjs.org/)
+- Video transcoding powered by [FFmpeg](https://ffmpeg.org/)

@@ -65,9 +65,9 @@ export function onProgress(cb: (data: any) => void) {
   return getMp().onProgress(cb)
 }
 
-export async function finalizeLibrary(mpRoot: string) {
+export async function finalizeLibrary(mpRoot: string, opts?: { lang?: string }) {
   if (!has('finalizeLibrary')) return Promise.reject(new Error('IPC not available'))
-  return getMp().finalizeLibrary(mpRoot)
+  return getMp().finalizeLibrary(mpRoot, opts)
 }
 
 // convenience wrapper to read a log JSON file by full path

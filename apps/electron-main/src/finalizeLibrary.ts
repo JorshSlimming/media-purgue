@@ -6,7 +6,7 @@ import { readLogJSON } from './logger'
 import { getActivityLogger } from './loggerRegistry'
 import { notifyProgress } from './progressNotifier'
 
-export async function finalizeLibrary(mpRoot: string) {
+export async function finalizeLibrary(mpRoot: string, opts?: { lang?: string }) {
   const projectRoot = path.resolve(mpRoot, '..')
   const logger = getActivityLogger(projectRoot)
   try { await logger.logEvent('finalize:starting', { mpRoot }) } catch (_) {}
@@ -33,7 +33,9 @@ export async function finalizeLibrary(mpRoot: string) {
 
   const configPath = path.join(mpRoot, 'Config', 'usuario.json')
   const usuario = await readJson(configPath)
-  const destino = usuario?.ubicacion_biblioteca ? path.resolve(mpRoot, usuario.ubicacion_biblioteca, usuario?.nombre_biblioteca || 'Biblioteca_Final') : path.resolve(mpRoot, '..', usuario?.nombre_biblioteca || 'Biblioteca_Final')
+  const lang = opts?.lang || usuario?.lang || 'es'
+  const defaultNombre = lang === 'en' ? 'Final_Library' : 'Biblioteca_Final'
+  const destino = usuario?.ubicacion_biblioteca ? path.resolve(mpRoot, usuario.ubicacion_biblioteca, usuario?.nombre_biblioteca || defaultNombre) : path.resolve(mpRoot, '..', usuario?.nombre_biblioteca || defaultNombre)
   let moved = false
   try {
     const src = path.join(mpRoot, '02_Biblioteca_Final')
@@ -53,6 +55,41 @@ export async function finalizeLibrary(mpRoot: string) {
   }
   try {
     await fs.promises.writeFile(path.join(path.resolve(destino), 'global.json'), JSON.stringify(summary, null, 2), 'utf8')
+  } catch (_) {}
+  // write a localized summary file for English UI consumers
+  try {
+    if (lang === 'en') {
+      const enSummary = {
+        processes: summary.procesos,
+        total_files: summary.archivos_procesados,
+        kept: summary.conservados,
+        deleted: summary.eliminados,
+        kept_bytes: summary.espacio_total_conservado_bytes,
+        freed_bytes: summary.espacio_total_liberado_bytes,
+        generated_at: summary.generado_en
+      }
+      await fs.promises.writeFile(path.join(path.resolve(destino), 'global_en.json'), JSON.stringify(enSummary, null, 2), 'utf8')
+    }
+  } catch (_) {}
+
+  // attempt to localize common subfolder names after move/copy
+  try {
+    if (lang === 'en') {
+      const tryRename = async (fromName: string, toName: string) => {
+        try {
+          const fromPath = path.join(destino, fromName)
+          const toPath = path.join(destino, toName)
+          const st = await fs.promises.stat(fromPath).catch(() => null)
+          if (st && st.isDirectory()) {
+            // only rename if target doesn't exist
+            const exists = await fs.promises.stat(toPath).then(() => true).catch(() => false)
+            if (!exists) await fs.promises.rename(fromPath, toPath)
+          }
+        } catch (_) {}
+      }
+      await tryRename('Imagenes', 'Images')
+      await tryRename('Videos', 'Videos')
+    }
   } catch (_) {}
   try { await logger.logEvent('finalize:finished', { destino }) } catch (_) {}
   try { notifyProgress({ type: 'finalize:finished', data: { destino, moved } }) } catch (_) {}

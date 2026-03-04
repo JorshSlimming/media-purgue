@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld('mp', {
   readAppLog: (root: string) => ipcRenderer.invoke('mp:readAppLog', root),
   saveSession: (root: string, session: any) => ipcRenderer.invoke('mp:saveSession', root, session),
   loadSession: (root: string) => ipcRenderer.invoke('mp:loadSession', root),
-  finalizeLibrary: (root: string) => ipcRenderer.invoke('mp:finalizeLibrary', root),
+  finalizeLibrary: (root: string, opts?: any) => ipcRenderer.invoke('mp:finalizeLibrary', root, opts),
   listLogs: (root: string) => ipcRenderer.invoke('mp:listLogs', root),
   readLog: (fullPathOrMpRoot: string, fileName?: string) => ipcRenderer.invoke('mp:readLog', fullPathOrMpRoot, fileName)
 })

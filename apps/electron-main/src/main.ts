@@ -412,8 +412,8 @@ ipcMain.handle('mp:loadSession', async (evt, rootPath: string) => {
 
 import { finalizeLibrary } from './finalizeLibrary'
 
-ipcMain.handle('mp:finalizeLibrary', async (evt, mpRoot: string) => {
-  return finalizeLibrary(mpRoot)
+ipcMain.handle('mp:finalizeLibrary', async (evt, mpRoot: string, opts?: any) => {
+  return finalizeLibrary(mpRoot, opts)
 })
 
 ipcMain.handle('mp:revealPath', async (evt, targetPath: string) => {

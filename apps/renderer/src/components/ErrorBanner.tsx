@@ -6,9 +6,10 @@ type Props = {
   staging?: string | null
   logPath?: string | null
   onRetry?: () => void
+  t?: (key: string, vars?: Record<string,string>) => string
 }
 
-export default function ErrorBanner({ message, staging, logPath, onRetry }: Props) {
+export default function ErrorBanner({ message, staging, logPath, onRetry, t }: Props) {
   const [logContent, setLogContent] = useState<any | null>(null)
 
   if (!message) return null
@@ -18,7 +19,7 @@ export default function ErrorBanner({ message, staging, logPath, onRetry }: Prop
       <div className="flex items-start gap-3 mb-4">
         <div className="text-red-500 text-xl font-bold mt-0.5">⚠️</div>
         <div>
-          <h3 className="text-red-800 font-bold mb-1">Se encontró un problema</h3>
+          <h3 className="text-red-800 font-bold mb-1">{(t||((k:string)=>k))('errorFound')}</h3>
           <p className="text-red-700 text-sm font-medium leading-relaxed">{message}</p>
         </div>
       </div>
@@ -29,7 +30,7 @@ export default function ErrorBanner({ message, staging, logPath, onRetry }: Prop
             onClick={onRetry}
             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-md transition-colors text-sm"
           >
-            🔄 Reintentar
+            🔄 {(t||((k:string)=>k))('retry')}
           </button>
         )}
         {staging && (
@@ -37,7 +38,7 @@ export default function ErrorBanner({ message, staging, logPath, onRetry }: Prop
             onClick={() => revealPath(staging)}
             className="px-4 py-2 bg-white hover:bg-red-50 text-red-700 border border-red-200 font-semibold rounded-lg shadow-sm transition-colors text-sm"
           >
-            📂 Abrir .staging
+            📂 {(t||((k:string)=>k))('openStaging')}
           </button>
         )}
         {logPath && (
@@ -45,7 +46,7 @@ export default function ErrorBanner({ message, staging, logPath, onRetry }: Prop
             onClick={async () => { const c = await readLog(logPath); setLogContent(c) }}
             className="px-4 py-2 bg-white hover:bg-red-50 text-red-700 border border-red-200 font-semibold rounded-lg shadow-sm transition-colors text-sm"
           >
-            📋 Ver log
+            📋 {(t||((k:string)=>k))('viewLog')}
           </button>
         )}
         {logPath && (
@@ -53,7 +54,7 @@ export default function ErrorBanner({ message, staging, logPath, onRetry }: Prop
             onClick={() => revealPath(logPath)}
             className="px-4 py-2 bg-white hover:bg-red-50 text-red-700 border border-red-200 font-semibold rounded-lg shadow-sm transition-colors text-sm"
           >
-            📂 Carpeta del log
+            📂 {(t||((k:string)=>k))('openLogFolder')}
           </button>
         )}
       </div>

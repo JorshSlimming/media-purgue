@@ -9,6 +9,129 @@ import ErrorBanner from './components/ErrorBanner'
 import { useProgressStore } from './state/store'
 
 export default function App() {
+  // Simple i18n: Spanish/English
+  const [lang, setLang] = useState<'es'|'en'>(() => {
+    try {
+      const stored = typeof window !== 'undefined' ? window.localStorage.getItem('mp:lang') : null
+      if (stored === 'es' || stored === 'en') return stored
+      const nav = (typeof navigator !== 'undefined' && (navigator.language || (navigator as any).userLanguage)) ? String(navigator.language || (navigator as any).userLanguage).toLowerCase() : 'es'
+      return nav.startsWith('en') ? 'en' : 'es'
+    } catch (_) { return 'es' }
+  })
+
+  React.useEffect(() => {
+    try { if (typeof window !== 'undefined') window.localStorage.setItem('mp:lang', lang) } catch (_) {}
+  }, [lang])
+
+  const translations: any = {
+    es: {
+      mode: 'Modo: {mode}', simple: 'Simple', advanced: 'Avanzado',
+      volverInicio: 'Volver al inicio', wantAdvance: '¿Quieres avanzar?',
+      advanceWarning: 'Al avanzar no podrás volver a seleccionar {what}.', no: 'No', yes: 'Si',
+      confirmCloseTitle: 'Confirmar cierre de lote',
+      confirmCloseMessage: '¿Estás seguro de finalizar el lote?',
+      eliminar: 'Eliminar', conservar: 'Conservar', lotesGenerados: 'Lotes Generados',
+      images: 'imágenes', videos: 'videos', lots: 'Lotes', revisar: 'Revisar', lotePendiente: 'Lote pendiente', retroceder: 'Retroceder', revisarLote: 'Revisar Lote', noQuedanPendientes: 'No quedan pendientes',
+      verSoloPendientes: 'Ver solo pendientes', finalizarLote: 'Finalizar lote', loteCerrado: '¡Lote {id} cerrado!', reviewedFiles: 'Has revisado {total} archivos con éxito.', continuarRevisando: 'Continuar Revisando',
+      advancedSettingsTitle: '⚙️ Configuración avanzada',
+      batchSizeTitle: '📦 Tamaño de lote',
+      imagesLabel: 'Imágenes',
+      videosLabel: 'Videos',
+      start: 'Iniciar',
+      continue: 'Continuar',
+      sameFolder: '(misma carpeta de origen)',
+      loteFinalizado: 'Lote finalizado',
+      waitingEvents: 'Esperando eventos...',
+      finalFolderOpenNote: 'Al finalizar, se abrirá la carpeta con los archivos conservados.',
+      modify: 'Modificar',
+      includeSubfolders: 'Incluir subcarpetas',
+      orderingCriterion: '🔽 Criterio de orden',
+      creationDate: 'Fecha de creación',
+      sizeLabel: 'Tamaño',
+      finalFolderName: '📛 Nombre carpeta final',
+      timePerFileTitle: '⏱️ Tiempo estimado por archivo (segundos)',
+      imagesSeconds: 'Imágenes (s)',
+      videosSeconds: 'Videos (s)',
+      timeNote: 'Los tiempos se usan para estimar el tiempo por lote y se actualizan al guardar.',
+      resumeQuestion: '¿Deseas seguir en la carpeta llamada {name}?',
+      resumeButton: 'Continuar en {name}',
+      selectSourceTitle: 'Seleccionar Origen',
+      selectSourcePlaceholder: "Selecciona la carpeta a limpiar...",
+      selectButton: 'Seleccionar',
+      showConfig: 'Mostrar configuración',
+      hideConfig: 'Ocultar configuración',
+      noLotesAvailable: 'No hay lotes disponibles',
+      pctCompleted: '{pct}% completado',
+      showFinalizados: 'Mostrar finalizados',
+      hideFinalizados: 'Ocultar finalizados',
+      sortNone: 'Sin ordenar', sortSizeAsc: 'Tamaño ↑', sortSizeDesc: 'Tamaño ↓', sortDateAsc: 'Fecha ↑', sortDateDesc: 'Fecha ↓',
+      finalFolderLocation: '📍 Ubicación de la carpeta final',
+      browse: 'Examinar...',
+      defaultLocationNote: "Por defecto '../' se ubica junto a la carpeta de origen.",
+      cancel: 'Cancelar',
+      save: 'Guardar',
+      processCompleted: '¡Proceso Completado!', allDoneMessage: 'Todos los lotes han sido procesados y tu biblioteca está limpia.', archivosRevisados: 'Archivos revisados:', conservadosBiblioteca: 'Conservados en Biblioteca:', archivosEliminados: 'Archivos eliminados:', espacioLiberado: 'Espacio liberado:', cerrar: 'Cerrar', abrirCarpetaFinal: 'Abrir carpeta final'
+      ,showLogs: '🛠️ Ver detalles técnicos', hideLogs: 'Ocultar logs técnicos', creatingLotsTitle: 'Creando lotes...', creatingLotsMessage: 'Estamos organizando los archivos antes de continuar.'
+      ,loadingVideo: 'Cargando video… espera antes de marcar', prev: 'Anterior', next: 'Siguiente', deleteLabel: 'Eliminar', keepLabel: 'Conservar', errorFound: 'Se encontró un problema', retry: 'Reintentar', openStaging: 'Abrir .staging', viewLog: 'Ver log', openLogFolder: 'Carpeta del log'
+    },
+    en: {
+      mode: 'Mode: {mode}', simple: 'Simple', advanced: 'Advanced',
+      volverInicio: 'Return to start', wantAdvance: 'Do you want to proceed?',
+      advanceWarning: 'If you proceed you will not be able to reselect these {what}.', no: 'No', yes: 'Yes',
+      confirmCloseTitle: 'Confirm close',
+      confirmCloseMessage: 'Are you sure you want to finalize this lot?',
+      eliminar: 'Delete', conservar: 'Keep', lotesGenerados: 'Generated Lots',
+      images: 'images', videos: 'videos', lots: 'Lots', revisar: 'Review', lotePendiente: 'Pending lot', retroceder: 'Back', revisarLote: 'Review Lot', noQuedanPendientes: 'No pending items',
+      verSoloPendientes: 'Show only pending', finalizarLote: 'Finalize lot', loteCerrado: 'Lot {id} closed!', reviewedFiles: 'You reviewed {total} files.', continuarRevisando: 'Continue Reviewing',
+      advancedSettingsTitle: '⚙️ Advanced settings',
+      batchSizeTitle: '📦 Batch size',
+      imagesLabel: 'Images',
+      videosLabel: 'Videos',
+      start: 'Start',
+      continue: 'Continue',
+      sameFolder: '(same as source folder)',
+      loteFinalizado: 'Lot completed',
+      waitingEvents: 'Waiting for events...',
+      finalFolderOpenNote: 'When finished, the folder with kept files will be opened.',
+      modify: 'Modify',
+      includeSubfolders: 'Include subfolders',
+      orderingCriterion: '🔽 Ordering criterion',
+      creationDate: 'Creation date',
+      sizeLabel: 'Size',
+      finalFolderName: '📛 Final folder name',
+      timePerFileTitle: '⏱️ Estimated time per file (seconds)',
+      imagesSeconds: 'Images (s)',
+      videosSeconds: 'Videos (s)',
+      timeNote: 'Times are used to estimate batch duration and are updated on save.',
+      resumeQuestion: 'Do you want to continue in the folder named {name}?',
+      resumeButton: 'Continue in {name}',
+      selectSourceTitle: 'Select Source',
+      selectSourcePlaceholder: "Select the folder to clean...",
+      selectButton: 'Select',
+      showConfig: 'Show settings',
+      hideConfig: 'Hide settings',
+      noLotesAvailable: 'No lots available',
+      pctCompleted: '{pct}% completed',
+      showFinalizados: 'Show completed',
+      hideFinalizados: 'Hide completed',
+      sortNone: 'Unsorted', sortSizeAsc: 'Size ↑', sortSizeDesc: 'Size ↓', sortDateAsc: 'Date ↑', sortDateDesc: 'Date ↓',
+      finalFolderLocation: '📍 Final folder location',
+      browse: 'Browse...',
+      defaultLocationNote: "By default '../' is placed alongside the source folder.",
+      cancel: 'Cancel',
+      save: 'Save',
+      processCompleted: 'Process Completed!', allDoneMessage: 'All lots have been processed and your library is clean.', archivosRevisados: 'Files reviewed:', conservadosBiblioteca: 'Kept in Library:', archivosEliminados: 'Deleted files:', espacioLiberado: 'Space freed:', cerrar: 'Close', abrirCarpetaFinal: 'Open final folder'
+      ,showLogs: '🛠️ Show technical details', hideLogs: 'Hide logs', creatingLotsTitle: 'Creating lots...', creatingLotsMessage: 'We are organizing files before continuing.'
+      ,loadingVideo: 'Loading video… wait before marking', prev: 'Previous', next: 'Next', deleteLabel: 'Delete', keepLabel: 'Keep', errorFound: 'An error occurred', retry: 'Retry', openStaging: 'Open .staging', viewLog: 'View log', openLogFolder: 'Open log folder'
+    }
+  }
+
+  function t(key: string, vars?: Record<string,string>) {
+    const s = (translations[lang] && translations[lang][key]) || key
+    if (!vars) return s
+    return Object.keys(vars).reduce((acc, k) => acc.replace(new RegExp(`\\{${k}\\}`, 'g'), String(vars[k])), s)
+  }
+
   const [rootPath, setRootPath] = useState('')
   const [includeSub, setIncludeSub] = useState(true)
   const [pendingUsuarioConfig, setPendingUsuarioConfig] = useState<any>(null)
@@ -33,6 +156,8 @@ export default function App() {
   const [showConfigPanel, setShowConfigPanel] = useState<boolean>(false)
   const [simpleMode, setSimpleMode] = useState<boolean>(true)
   const [simplePreview, setSimplePreview] = useState<any | null>(null)
+  const [lastRootSaved, setLastRootSaved] = useState<string | null>(null)
+  const [showOnlyPending, setShowOnlyPending] = useState<boolean>(false)
 
   // Modals stats state
   const [loteStats, setLoteStats] = useState<{ id: string | number, conservados: number, eliminados: number, bytesConservados?: number, bytesEliminados?: number } | null>(null)
@@ -43,6 +168,7 @@ export default function App() {
   const [showCreateLotesModal, setShowCreateLotesModal] = useState(false)
   const [createLotesProgress, setCreateLotesProgress] = useState<{ total: number, created: number, percent: number, etaSeconds: number | null }>({ total: 0, created: 0, percent: 0, etaSeconds: null })
   const autoOpenFinalOnceRef = React.useRef(false)
+  const skipAutoOpenRef = React.useRef<any>(null)
   const scanProgressStartRef = React.useRef<number | null>(null)
 
   function formatBytes(bytes?: number) {
@@ -65,60 +191,134 @@ export default function App() {
     const r = s % 60
     return `${m}m ${r}s`
   }
+  function basename(path?: string) {
+    if (!path) return ''
+    const trimmed = path.replace(/[\\/]+$/, '')
+    const segments = trimmed.split(/[\\/]/)
+    return segments[segments.length - 1] || trimmed
+  }
+
+  React.useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = window.localStorage.getItem('mp:lastRoot')
+        if (stored) setLastRootSaved(stored)
+      }
+    } catch (_) {}
+  }, [])
+
+  React.useEffect(() => {
+    if (simpleMode) setShowConfigPanel(false)
+  }, [simpleMode])
+
+  // compute header helper values
+  const totalLotesCount = (loteList && loteList.length > 0) ? loteList.length : (scanResult?.created?.length ?? 0)
+  const loteReady = loteData ? ((loteData.archivos || []).filter((f:any)=>f.estado==='pendiente').length === 0) : false
+  const pendingCount = loteData ? ((loteData.archivos || []).filter((f:any)=>f.estado==='pendiente').length) : 0
+  // compute overall ready percentage for generated lotes view
+  const overallTotalLotes = (loteList && loteList.length > 0) ? loteList.length : (scanResult?.created?.length ?? 0)
+  const overallReadyCount = (loteList && loteList.length > 0) ? loteList.filter((l:any) => l.ready).length : 0
+  const overallPct = overallTotalLotes ? Math.round((overallReadyCount / overallTotalLotes) * 100) : 0
+
+  React.useEffect(() => {
+    // If user had 'show only pending' active but there are no pending files, turn it off automatically
+    if (showOnlyPending && pendingCount === 0) {
+      setShowOnlyPending(false)
+    }
+  }, [showOnlyPending, pendingCount])
+
+  React.useEffect(() => {
+    if (showOnlyPending && loteData) {
+      const idx = (loteData.archivos || []).findIndex((f:any)=>f.estado === 'pendiente')
+      if (idx >= 0) setCurrentIndex(idx)
+    }
+  }, [showOnlyPending, loteData])
+
+  // When a lote has no pending files, automatically open the finalize confirmation modal
+  React.useEffect(() => {
+    if (!loteData) {
+      skipAutoOpenRef.current = null
+      return
+    }
+    // reset suppression when there are pending files again
+    if (pendingCount > 0) {
+      skipAutoOpenRef.current = null
+      return
+    }
+    // only auto-open if user hasn't suppressed for this lote
+    if (pendingCount === 0 && !showFinalizeConfirm) {
+      if (skipAutoOpenRef.current !== loteData.lote_id) {
+        setShowFinalizeConfirm(true)
+      }
+    }
+  }, [loteData, pendingCount, showFinalizeConfirm])
+
+  async function inspectAndSetRoot(p: string, logType: string) {
+    autoOpenFinalOnceRef.current = false
+    setRootPath(p)
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('mp:lastRoot', p)
+      }
+    } catch (_) {}
+    setLastRootSaved(p)
+    try { appendAppLog(p, { type: logType, data: { path: p } }).catch(() => {}) } catch (_) {}
+    try { readAppLog(p).then((res:any)=>{ if(res?.ok) setAppEvents(res.entries||[]) }).catch(()=>{}) } catch(_) {}
+    setStatusMsg('Inspeccionando carpeta...')
+    setScanResult(null)
+    setLoteData(null)
+    try {
+      const info = await inspectFolder({ rootPath: p, includeSubfolders: includeSub })
+      setStatusMsg(null)
+      const counts = info.counts || { images: 0, videos: 0 }
+      setModalCounts(counts)
+      if (!pendingUsuarioConfig) {
+        setPendingUsuarioConfig({
+          tamano_lote_imagenes: 100,
+          tamano_lote_videos: 30,
+          criterio: 'fecha_creacion',
+          nombre_biblioteca: 'Biblioteca_Final',
+          ubicacion_biblioteca: p,
+          incluir_subcarpetas: true,
+          secondsPerImage: 2.5,
+          secondsPerVideo: 20
+        })
+      }
+      try {
+        const ses = await loadSession(p).catch(() => null)
+        if (ses && ses.ok && ses.session) {
+          const s = ses.session
+          if (s.usuarioConfig) setPendingUsuarioConfig(s.usuarioConfig)
+          if (Array.isArray(s.created) && s.created.length > 0) {
+            setScanResult({ created: s.created, counts: s.counts || counts })
+            if (Array.isArray(s.closedLotes)) setClosedLotes(s.closedLotes)
+          }
+          if (s.currentLote) setSelectedLote(s.currentLote)
+        }
+      } catch (_) {}
+      const st = await listStaging(p)
+      setStagingInfo(st)
+    } catch (err: any) {
+      setStatusMsg('Error inspeccionando: ' + (err.message || String(err)))
+    }
+  }
 
   async function handleSelectFolder() {
     const p = await selectFolder()
-    if (p) {
-      autoOpenFinalOnceRef.current = false
-      setRootPath(p)
-      // Log folder selection event (non-blocking) and refresh persisted events
-      try { appendAppLog(p, { type: 'button:selectFolder', data: { path: p } }).catch(() => {}) } catch (_) {}
-      try { readAppLog(p).then((res:any)=>{ if(res?.ok) setAppEvents(res.entries||[]) }).catch(()=>{}) } catch(_) {}
-      setStatusMsg('Inspeccionando carpeta...')
-      setScanResult(null)
-      setLoteData(null)
-      try {
-        const info = await inspectFolder({ rootPath: p, includeSubfolders: includeSub })
-        setStatusMsg(null)
-        const counts = info.counts || { images: 0, videos: 0 }
-        setModalCounts(counts)
-        // Set default config locally to display summary
-        if (!pendingUsuarioConfig) {
-          setPendingUsuarioConfig({
-            tamano_lote_imagenes: 100,
-            tamano_lote_videos: 30,
-            criterio: 'fecha_creacion',
-            nombre_biblioteca: 'Biblioteca_Final',
-            ubicacion_biblioteca: p,
-            incluir_subcarpetas: true,
-            secondsPerImage: 2.5,
-            secondsPerVideo: 20
-          })
-        }
-        // attempt to load previous session for this root
-        try {
-          const ses = await loadSession(p).catch(() => null)
-          if (ses && ses.ok && ses.session) {
-            const s = ses.session
-            // restore usuarioConfig if present
-            if (s.usuarioConfig) setPendingUsuarioConfig(s.usuarioConfig)
-            // restore created lote list if present
-            if (Array.isArray(s.created) && s.created.length > 0) {
-              setScanResult({ created: s.created, counts: s.counts || counts })
-              if (Array.isArray(s.closedLotes)) setClosedLotes(s.closedLotes)
-            }
-            // if session has an active lote, try to set it (do not auto-open)
-            if (s.currentLote) {
-              setSelectedLote(s.currentLote)
-            }
-          }
-        } catch (_) {}
-        const st = await listStaging(p)
-        setStagingInfo(st)
-      } catch (err: any) {
-        setStatusMsg('Error inspeccionando: ' + (err.message || String(err)))
-      }
-    }
+    if (p) await inspectAndSetRoot(p, 'button:selectFolder')
+  }
+
+  async function resumeFolder(p: string) {
+    if (!p) return
+    await inspectAndSetRoot(p, 'button:resumeFolder')
+  }
+
+  function handleToggleSimpleMode() {
+    setSimpleMode(s => {
+      const nv = !s
+      try { if (rootPath) appendAppLog(rootPath, { type: 'button:toggleSimpleMode', data: { enabled: nv } }).catch(() => {}) } catch (_) {}
+      return nv
+    })
   }
 
   async function handleStartProcess() {
@@ -234,7 +434,7 @@ export default function App() {
     } catch (_) {}
   }
 
-  async function handleCloseLote() {
+  async function handleCloseLote(skipShowSummary = false) {
     if (!selectedLote || !loteData) return
     setStatusMsg(`Cerrando lote ${loteData.lote_id}...`)
     setLastError(null)
@@ -248,7 +448,9 @@ export default function App() {
 
     if (res && res.ok) {
       const closedPath = selectedLote as string
-      setLoteStats({ id: loteData.lote_id, conservados: res.conservados, eliminados: res.eliminados, bytesConservados: keepBytes, bytesEliminados: delBytes })
+      if (!skipShowSummary) {
+        setLoteStats({ id: loteData.lote_id, conservados: res.conservados, eliminados: res.eliminados, bytesConservados: keepBytes, bytesEliminados: delBytes })
+      }
       setClosedLotes(prev => prev.includes(closedPath) ? prev : [...prev, closedPath])
       // mark lote as ready in metadata list
       setLoteList(prev => prev.map((it: any) => it.path === closedPath ? ({ ...it, ready: true, pendingCount: 0 }) : it))
@@ -295,11 +497,35 @@ export default function App() {
     }
   }
 
+  function resetToStart() {
+    setShowGlobalSummary(false)
+    setScanResult(null)
+    setLoteList([])
+    setLoteData(null)
+    setSelectedLote(null)
+    setClosedLotes([])
+    setLoteStats(null)
+    setShowFinalizeConfirm(false)
+    setModalVisible(false)
+    setShowLogs(false)
+    setStatusMsg(null)
+    setRootPath('')
+    setPendingUsuarioConfig(null)
+    setModalCounts(null)
+    setStagingInfo(null)
+    setAppEvents([])
+    setFinalDestino(null)
+    setIncludeSub(true)
+    setSimpleMode(true)
+    setSimplePreview(null)
+    autoOpenFinalOnceRef.current = false
+  }
+
   async function handleFinalize() {
     setStatusMsg('Finalizando proceso global...')
     try {
       const mpRoot = rootPath ? `${rootPath}/.media-purgue` : ''
-      const res = await finalizeLibrary(mpRoot)
+      const res = await finalizeLibrary(mpRoot, { lang })
       if (res && res.ok) {
         setGlobalStats(res.summary)
         setShowGlobalSummary(true)
@@ -467,11 +693,39 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
       <header className="bg-white border-b border-gray-200 px-4 py-2 flex items-center flex-wrap sticky top-0 z-40">
         <div className="flex items-center gap-2">
-          <img src="./logo.png" alt="Media Purgue" className="w-8 h-8 rounded-xl shadow object-cover" />
-          <div>
-            <h1 className="text-lg font-bold text-gray-900 leading-tight">Media Purgue</h1>
-            <p className="text-xs text-gray-500 font-medium tracking-wide uppercase">Organizacion de multimedia</p>
-          </div>
+          {!loteData ? (
+            <>
+              <img src="./logo.png" alt="Media Purgue" className="w-8 h-8 rounded-xl shadow object-cover" />
+              <div>
+                <h1 className="text-lg font-bold text-gray-900 leading-tight">Media Purgue</h1>
+                <p className="text-xs text-gray-500 font-medium tracking-wide uppercase">{t('selectSourceTitle')}</p>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="text-left">
+                  <div className="truncate text-sm font-semibold text-gray-800">
+                  <span>Lote {loteData.lote_id}</span>
+                  <span className="ml-3 text-xs text-gray-500">{loteData.tipo === 'videos' ? t('videos') : t('images')}</span>
+                  {simpleMode && (
+                    <div className="text-xs text-gray-500 mt-1">{t('lotesGenerados')}: {(scanResult?.created?.length ?? loteList.length ?? 0)}</div>
+                  )}
+                </div>
+                {!simpleMode && (
+                  <div className="mt-1">
+                    <button onClick={handleBackFromLote} className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-100 font-medium mb-100 px">{t('retroceder')}</button>
+                  </div>
+                )}
+              </div>
+              {pendingCount === 0 ? (
+                <button disabled className="ml-3 px-3 py-1 rounded-lg font-medium bg-gray-100 text-gray-400 border border-gray-200">{t('noQuedanPendientes')}</button>
+              ) : (
+                <button onClick={() => setShowOnlyPending(s => !s)} className={`ml-3 px-3 py-1 rounded-lg font-medium transition ${showOnlyPending ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-white text-gray-700 border border-gray-200'}`}>
+                  {t('verSoloPendientes')}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* controls removed from left header; they display on the right when scanResult exists */}
@@ -486,56 +740,41 @@ export default function App() {
           )}
           {!loteData && (
             // show centered title only after scanning
-            scanResult ? <div className="text-lg font-semibold">Lotes Generados</div> : null
+            scanResult ? <div className="text-lg font-semibold">{t('lotesGenerados')}</div> : null
           )}
         </div>
 
         {/* right: lote info above buttons and global controls/counts (shown after scan) */}
-        <div className="flex items-center">
-          {loteData ? (
-            <div className="flex items-center gap-3">
-              <div className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span>Lote {loteData.lote_id}</span>
-                    <span className="text-xs text-gray-500">{loteData.tipo === 'videos' ? 'Video' : 'Imagen'}</span>
-                  </div>
-                    {(() => {
-                      const totalLotes = (loteList && loteList.length > 0) ? loteList.length : (scanResult?.created?.length ?? 0)
-                      return (
-                        <div>
-                          <div className="text-xs text-gray-500 mt-1">Total lotes: {totalLotes}</div>
-                          {simpleMode && (
-                            (() => {
-                              const totalLotes = (loteList && loteList.length > 0) ? loteList.length : (scanResult?.created?.length ?? 0)
-                              const readyCount = (loteList && loteList.length > 0) ? loteList.filter((l:any) => l.ready).length : closedLotes.length
-                              const pct = totalLotes ? Math.round((readyCount / totalLotes) * 100) : 0
-                              return (
-                                <div className="text-xs text-gray-600 mt-1">Completado: {pct}%</div>
-                              )
-                            })()
-                          )}
-                        </div>
-                      )
-                    })()}
-                  {/* simple-mode header progress moved below Swiper */}
-                </div>
-              </div>
-              <div>
-                {!simpleMode && (
-                  <button onClick={handleBackFromLote} className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium rounded-lg transition-colors border border-blue-200">
-                    Atrás
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : null}
-
+        <div className="flex items-center ml-auto">
           {scanResult && !loteData && (
             <div className="ml-4 hidden sm:flex items-center gap-3">
               <div className="text-sm px-3 py-1 bg-gray-100 text-gray-600 rounded-full font-medium">
-                Imágenes: {scanResult.counts?.images ?? 0} | Videos: {scanResult.counts?.videos ?? 0} | Lotes: {(scanResult.created?.length ?? loteList.length ?? 0)}
+                {t('imagesLabel')}: {scanResult.counts?.images ?? 0} | {t('videosLabel')}: {scanResult.counts?.videos ?? 0} | {t('lotesGenerados')}: {(scanResult.created?.length ?? loteList.length ?? 0)}
               </div>
+            </div>
+          )}
+
+          {loteData && (
+            <div className="flex items-center gap-3">
+              {/* spacer to balance left 'Ver solo pendientes' button width for visual centering */}
+              <button className="ml-3 px-3 py-1 rounded-lg font-medium bg-white text-white border border-white select-none pointer-events-none" aria-hidden="true">
+                {pendingCount === 0 ? t('noQuedanPendientes') : t('verSoloPendientes')}
+              </button>
+              <button onClick={() => { if (loteReady) setShowFinalizeConfirm(true) }} disabled={!loteReady} className={`px-3 py-1 rounded-lg font-semibold transition ${loteReady ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                {t('finalizarLote')}
+              </button>
+              {!simpleMode && null}
+            </div>
+          )}
+
+          {!scanResult && !loteData && (
+            <div className="ml-4 flex items-center gap-2">
+              <button onClick={handleToggleSimpleMode} className={`text-sm font-semibold px-3 py-1 bg-indigo-50 border border-indigo-200 rounded-lg transition-colors ${simpleMode ? 'text-indigo-700 bg-indigo-100' : 'text-gray-700 hover:bg-indigo-100'}`}>
+                {t('mode', { mode: simpleMode ? t('simple') : t('advanced') })}
+              </button>
+              <button onClick={() => setLang(l => l === 'es' ? 'en' : 'es')} className="text-sm px-2 py-1 rounded-lg bg-white border border-gray-200">
+                {lang.toUpperCase()}
+              </button>
             </div>
           )}
         </div>
@@ -546,48 +785,59 @@ export default function App() {
 
           {!scanResult && !loteData && (
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-              <h2 className="text-xl font-bold mb-6 text-gray-800">1. Seleccionar Origen</h2>
+              {!rootPath && lastRootSaved && (
+                <div className="mb-6 text-center">
+                  <div className="text-lg font-bold mb-3">{t('resumeQuestion', { name: basename(lastRootSaved) })}</div>
+                  <div className="flex justify-center">
+                    <button onClick={() => resumeFolder(lastRootSaved)} className="w-full max-w-md px-6 py-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-2xl shadow">
+                      {t('resumeButton', { name: basename(lastRootSaved) })}
+                    </button>
+                  </div>
+                </div>
+              )}
+              <h2 className="text-xl font-bold mb-6 text-gray-800">{t('selectSourceTitle')}</h2>
               <div className="flex gap-3 mb-8">
                 <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span className="text-gray-400">📁</span>
                   </div>
-                  <input readOnly value={rootPath} placeholder="Selecciona la carpeta a limpiar..." className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 shadow-inner focus:outline-none" />
+                  <input readOnly value={rootPath} placeholder={t('selectSourcePlaceholder')} className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 shadow-inner focus:outline-none" />
                 </div>
                 <button onClick={handleSelectFolder} className="px-6 py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-xl transition-colors border border-indigo-200">
-                  Seleccionar
+                  {t('selectButton')}
                 </button>
               </div>
 
               {rootPath && pendingUsuarioConfig && (
                 <div className="animate-fadeIn">
-                  <div className="flex items-center justify-center mb-2">
-                      <button onClick={() => setShowConfigPanel(s => !s)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
-                        {showConfigPanel ? 'Ocultar configuración' : 'Mostrar configuración'}
-                      </button>
-                    </div>
+                  {!simpleMode && (
+                    <div>
+                      <div className="flex items-center justify-center mb-2">
+                          <button onClick={() => setShowConfigPanel(s => !s)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
+                          {showConfigPanel ? t('hideConfig') : t('showConfig')}
+                        </button>
+                      </div>
 
-                  {/* (totals moved below into the start area for nicer layout) */}
-
-                  {/* configuration panel appears above the message so it pushes message/Iniciar down */}
-                  {showConfigPanel && (
-                    <div className="relative mb-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><span>⚙️</span> Configuración actual</h3>
-                        <div>
-                          <button onClick={handleOpenConfigModal} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
-                            Modificar
-                          </button>
+                      {showConfigPanel && (
+                        <div className="relative mb-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><span>⚙️</span> {t('advancedSettingsTitle')}</h3>
+                            <div>
+                              <button onClick={handleOpenConfigModal} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
+                                {t('modify') ?? 'Modificar'}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 text-sm text-gray-700 grid grid-cols-2 gap-y-3 shadow-inner">
+                            <div className="flex flex-col"><span className="text-gray-500 font-medium">{t('batchSizeTitle')}</span> <span className="font-semibold">{pendingUsuarioConfig.tamano_lote_imagenes} {t('imagesLabel')} | {pendingUsuarioConfig.tamano_lote_videos} {t('videosLabel')}</span></div>
+                            <div className="flex flex-col"><span className="text-gray-500 font-medium">{t('orderingCriterion')}</span> <span className="font-semibold">{pendingUsuarioConfig.criterio === 'fecha_creacion' ? t('creationDate') : t('sizeLabel')}</span></div>
+                            <div className="flex flex-col"><span className="text-gray-500 font-medium">{t('finalFolderName')}</span> <span className="font-semibold truncate">{pendingUsuarioConfig.nombre_biblioteca}</span></div>
+                            <div className="flex flex-col"><span className="text-gray-500 font-medium">{t('finalFolderLocation')}</span> <span className="font-semibold truncate" title={pendingUsuarioConfig.ubicacion_biblioteca}>{pendingUsuarioConfig.ubicacion_biblioteca === rootPath ? t('sameFolder') : pendingUsuarioConfig.ubicacion_biblioteca}</span></div>
+                            <div className="flex flex-col"><span className="text-gray-500 font-medium">{t('timePerFileTitle')}</span> <span className="font-semibold">{(pendingUsuarioConfig.secondsPerImage ?? 2.5)}s ({t('imagesLabel')}) · {(pendingUsuarioConfig.secondsPerVideo ?? 20)}s ({t('videosLabel')})</span></div>
+                            <div className="flex flex-col"><span className="text-gray-500 font-medium">{t('includeSubfolders')}</span> <span className="font-semibold">{pendingUsuarioConfig.incluir_subcarpetas ? t('yes') : t('no')}</span></div>
+                          </div>
                         </div>
-                      </div>
-                        <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 text-sm text-gray-700 grid grid-cols-2 gap-y-3 shadow-inner">
-                        <div className="flex flex-col"><span className="text-gray-500 font-medium">Tamaño de lote</span> <span className="font-semibold">{pendingUsuarioConfig.tamano_lote_imagenes} imágenes | {pendingUsuarioConfig.tamano_lote_videos} videos</span></div>
-                        <div className="flex flex-col"><span className="text-gray-500 font-medium">Criterio creacion lotes</span> <span className="font-semibold">{pendingUsuarioConfig.criterio === 'fecha_creacion' ? 'Fecha de creación' : 'Tamaño'}</span></div>
-                        <div className="flex flex-col"><span className="text-gray-500 font-medium">Nombre carpeta final</span> <span className="font-semibold truncate">{pendingUsuarioConfig.nombre_biblioteca}</span></div>
-                        <div className="flex flex-col"><span className="text-gray-500 font-medium">Ubicación</span> <span className="font-semibold truncate" title={pendingUsuarioConfig.ubicacion_biblioteca}>{pendingUsuarioConfig.ubicacion_biblioteca === rootPath ? '(misma carpeta de origen)' : pendingUsuarioConfig.ubicacion_biblioteca}</span></div>
-                        <div className="flex flex-col"><span className="text-gray-500 font-medium">Tiempos estimados</span> <span className="font-semibold">{(pendingUsuarioConfig.secondsPerImage ?? 2.5)}s (imagen) · {(pendingUsuarioConfig.secondsPerVideo ?? 20)}s (video)</span></div>
-                        <div className="flex flex-col"><span className="text-gray-500 font-medium">Incluir subcarpetas</span> <span className="font-semibold">{pendingUsuarioConfig.incluir_subcarpetas ? 'Sí' : 'No'}</span></div>
-                      </div>
+                      )}
                     </div>
                   )}
 
@@ -608,38 +858,29 @@ export default function App() {
                         const timePerVidLot = vidLotSize * secPerVid
                         const totalLotes = (loteList && loteList.length > 0) ? loteList.length : (scanResult?.created?.length ?? 0)
                         const readyCount = (loteList && loteList.length > 0) ? loteList.filter((l:any) => l.ready).length : 0
-                        const pct = totalLotes ? Math.round((readyCount / totalLotes) * 100) : 0
                         return (
                           <>
                             <div className="mb-3 text-sm text-gray-700 text-center">
-                              <span className="font-medium">Imágenes:</span> {imgCount} <span className="mx-2">|</span>
-                              <span className="font-medium">Videos:</span> {vidCount} <span className="mx-2">|</span>
-                              <span className="font-medium">Lotes:</span> {totalApprox}
+                              <span className="font-medium">{t('imagesLabel')}:</span> {imgCount} <span className="mx-2">|</span>
+                              <span className="font-medium">{t('videosLabel')}:</span> {vidCount} <span className="mx-2">|</span>
+                              <span className="font-medium">{t('lotesGenerados')}:</span> {totalApprox}
                               <span className="mx-2">|</span>
-                              <span className="font-medium">Tiempo estimado por lote:</span>
-                              <span className="ml-1">{formatSeconds(timePerImgLot)} (imágenes) · {formatSeconds(timePerVidLot)} (videos)</span>
+                              <span className="font-medium">{t('timePerFileTitle')}</span>
+                              <span className="ml-1">{formatSeconds(timePerImgLot)} ({t('imagesLabel')}) · {formatSeconds(timePerVidLot)} ({t('videosLabel')})</span>
                               {/* stagingInfo percent removed per UX request */}
                             </div>
-                            <div className="text-sm text-gray-600">Completado: {pct}%</div>
                             <div className="mb-2">
-                              <div className="font-semibold text-gray-800">Al finalizar, se abrirá la carpeta con los archivos conservados.</div>
+                              <div className="font-semibold text-gray-800">{t('finalFolderOpenNote')}</div>
                             </div>
                           </>
                         )
                       })()
                     )}
 
-                    <div className="flex flex-col items-center">
-                      <label className="flex items-center gap-3 mb-3">
-                        <input type="checkbox" checked={simpleMode} onChange={(e) => setSimpleMode(e.target.checked)} className="h-4 w-4 text-indigo-600 rounded" />
-                        <span className="text-sm font-medium">Modo simple</span>
-                      </label>
-
-                      <div className="flex justify-center">
-                        <button onClick={handleStartProcess} className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transition-colors">
-                          {(scanResult && Array.isArray(scanResult.created) && scanResult.created.length > 0) ? 'Continuar' : 'Iniciar'}
-                        </button>
-                      </div>
+                    <div className="flex justify-center mt-6">
+                      <button onClick={handleStartProcess} className="w-full max-w-md px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-bold text-lg rounded-xl shadow-lg transition-colors">
+                        {(scanResult && Array.isArray(scanResult.created) && scanResult.created.length > 0) ? t('continue') : t('start')}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -661,36 +902,32 @@ export default function App() {
                   <div className="flex items-center gap-3">
                     {!simpleMode && (
                       <button onClick={() => setShowFinalizados(s => !s)} className={`px-3 py-1 rounded-lg font-medium transition-colors ${showFinalizados ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                        {showFinalizados ? 'Ocultar finalizados' : 'Mostrar finalizados'}
+                        {showFinalizados ? t('hideFinalizados') : t('showFinalizados')}
                       </button>
+                    )}
+                    {overallPct === 100 && (
+                      <button onClick={resetToStart} className="px-3 py-1 rounded-lg font-medium bg-yellow-300 text-yellow-900 border border-yellow-300">{t('volverInicio')}</button>
                     )}
                   </div>
 
                   <div className="flex-1 px-6">
-                    {(() => {
-                      const totalLotes = (loteList && loteList.length > 0) ? loteList.length : (scanResult.created?.length ?? 0)
-                      const readyCount = (loteList && loteList.length > 0) ? loteList.filter((l:any) => l.ready).length : 0
-                      const pct = totalLotes ? Math.round((readyCount / totalLotes) * 100) : 0
-                      return (
                         <div className="w-full flex items-center gap-3">
-                          <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
-                            <div className="bg-green-500 h-3 rounded-full" style={{ width: `${pct}%` }} />
-                          </div>
-                          <div className="text-sm text-gray-600 w-15 text-right">{pct}% completado</div>
+                        <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
+                          <div className="bg-green-500 h-3 rounded-full" style={{ width: `${overallPct}%` }} />
                         </div>
-                      )
-                    })()}
+                        <div className="text-sm text-gray-600 w-15 text-right">{t('pctCompleted', { pct: String(overallPct) })}</div>
+                      </div>
                   </div>
 
                   {!simpleMode && (
                     <div className="flex items-center gap-3">
                       <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="px-2 py-1 rounded border text-sm">
-                        <option value="none">Sin ordenar</option>
-                        <option value="size-asc">Tamaño ↑</option>
-                        <option value="size-desc">Tamaño ↓</option>
-                        <option value="date-asc">Fecha ↑</option>
-                        <option value="date-desc">Fecha ↓</option>
-                      </select>
+                          <option value="none">{t('sortNone')}</option>
+                          <option value="size-asc">{t('sortSizeAsc')}</option>
+                          <option value="size-desc">{t('sortSizeDesc')}</option>
+                          <option value="date-asc">{t('sortDateAsc')}</option>
+                          <option value="date-desc">{t('sortDateDesc')}</option>
+                        </select>
                     </div>
                   )}
                 </div>
@@ -704,16 +941,16 @@ export default function App() {
                           <div className="flex items-center gap-4">
                             <div className="text-3xl">📦</div>
                             <div className="flex-1">
-                              <div className="font-semibold text-gray-800 truncate">Lote pendiente</div>
-                              <div className="text-xs text-gray-500">{simplePreview.tipo === 'videos' ? 'Video' : 'Imagen'} {simplePreview.totalBytes ? `· ${formatBytes(simplePreview.totalBytes)}` : ''}</div>
+                              <div className="font-semibold text-gray-800 truncate">{t('lotePendiente')}</div>
+                              <div className="text-xs text-gray-500">{simplePreview.tipo === 'videos' ? t('videos') : t('images')} {simplePreview.totalBytes ? `· ${formatBytes(simplePreview.totalBytes)}` : ''}</div>
                             </div>
                             <div>
-                              <button onClick={() => simplePreview.path && openLote(simplePreview.path)} className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-semibold border border-indigo-100">Revisar</button>
+                              <button onClick={() => simplePreview.path && openLote(simplePreview.path)} className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-semibold border border-indigo-100">{t('revisar')}</button>
                             </div>
                           </div>
                         </>
                       ) : (
-                        <div className="text-center text-gray-500">No hay lotes disponibles</div>
+                        <div className="text-center text-gray-500">{t('noLotesAvailable')}</div>
                       )}
                   </div>
                 </div>
@@ -735,7 +972,7 @@ export default function App() {
                     else if (sortOption === 'date-desc') entries.sort((a, b) => (b.oldestTs || 0) - (a.oldestTs || 0))
 
                     return entries.map((item: any, idx: number) => {
-                      const label = item.tipo === 'videos' ? 'Video' : 'Imagen'
+                      const label = item.tipo === 'videos' ? t('videos') : t('imagesLabel')
                       const isClosed = closedLotes.includes(item.path)
                       return (
                         <div key={item.path} className={`border border-gray-200 rounded-xl p-4 flex flex-col gap-3 transition-shadow ${isClosed ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'hover:shadow-md bg-white'}`}>
@@ -747,7 +984,7 @@ export default function App() {
                             </div>
                           </div>
                           <button onClick={() => { if (!isClosed) openLote(item.path) }} className={`w-full py-2 ${isClosed ? 'bg-gray-400 text-gray-700 border-gray-300' : 'bg-gray-50 hover:bg-indigo-50 text-indigo-600 border border-gray-200 hover:border-indigo-200'} font-semibold rounded-lg transition-colors`} disabled={isClosed}>
-                            {isClosed ? 'Lote finalizado' : 'Revisar Lote'}
+                            {isClosed ? t('loteFinalizado') : t('revisarLote')}
                           </button>
                         </div>
                       )
@@ -760,7 +997,7 @@ export default function App() {
 
           {loteData && (
             <div className="flex flex-col gap-4">
-              {lastError && <ErrorBanner message={lastError} onRetry={handleRetry} />}
+              {lastError && <ErrorBanner message={lastError} onRetry={handleRetry} t={t} />}
 
               {loteData.archivos.length > 0 && (
                 <div className="animate-fadeIn">
@@ -768,25 +1005,52 @@ export default function App() {
                     file={loteData.archivos[currentIndex]}
                     prevFile={loteData.archivos[currentIndex - 1] ?? null}
                     nextFile={loteData.archivos[currentIndex + 1] ?? null}
-                    onKeep={async () => {
+                    onKeep={() => {
                       const fileItem = loteData.archivos[currentIndex]
                       try { if (rootPath) appendAppLog(rootPath, { type: 'file:keep', data: { loteId: loteData.lote_id, orden: fileItem.orden, fileName: fileItem.nombre } }).catch(() => {}) } catch (_) {}
                       try { if (rootPath) readAppLog(rootPath).then((res:any)=>{ if(res?.ok) setAppEvents(res.entries||[]) }).catch(()=>{}) } catch(_) {}
-                      await toggleEstado(fileItem.orden, 'conservar')
-                      setCurrentIndex(i => Math.min(i + 1, loteData.archivos.length - 1))
+                      // Optimistic UI: mark locally and advance immediately
+                      try {
+                        const updated = { ...loteData, archivos: (loteData.archivos || []).map((f:any, idx:number) => idx === currentIndex ? { ...f, estado: 'conservar' } : f) }
+                        setLoteData(updated)
+                      } catch (_) {}
+                      setCurrentIndex(i => Math.min(i + 1, (loteData.archivos || []).length - 1))
+                      // Persist in background
+                      toggleEstado(fileItem.orden, 'conservar').catch(() => {})
                     }}
-                    onDelete={async () => {
+                    onDelete={() => {
                       const fileItem = loteData.archivos[currentIndex]
                       try { if (rootPath) appendAppLog(rootPath, { type: 'file:delete', data: { loteId: loteData.lote_id, orden: fileItem.orden, fileName: fileItem.nombre } }).catch(() => {}) } catch (_) {}
                       try { if (rootPath) readAppLog(rootPath).then((res:any)=>{ if(res?.ok) setAppEvents(res.entries||[]) }).catch(()=>{}) } catch(_) {}
-                      await toggleEstado(fileItem.orden, 'eliminar')
-                      setCurrentIndex(i => Math.min(i + 1, loteData.archivos.length - 1))
+                      // Optimistic UI: mark locally and advance immediately
+                      try {
+                        const updated = { ...loteData, archivos: (loteData.archivos || []).map((f:any, idx:number) => idx === currentIndex ? { ...f, estado: 'eliminar' } : f) }
+                        setLoteData(updated)
+                      } catch (_) {}
+                      setCurrentIndex(i => Math.min(i + 1, (loteData.archivos || []).length - 1))
+                      // Persist in background
+                      toggleEstado(fileItem.orden, 'eliminar').catch(() => {})
                     }}
-                    onPrev={() => setCurrentIndex(i => Math.max(0, i - 1))}
-                    onNext={() => setCurrentIndex(i => Math.min(loteData.archivos.length - 1, currentIndex + 1))}
+                    onPrev={() => setCurrentIndex(prev => {
+                      const archivos = Array.isArray(loteData.archivos) ? loteData.archivos : []
+                      if (!showOnlyPending) return Math.max(0, prev - 1)
+                      for (let j = prev - 1; j >= 0; j--) {
+                        if (archivos[j] && archivos[j].estado === 'pendiente') return j
+                      }
+                      return prev
+                    })}
+                    onNext={() => setCurrentIndex(prev => {
+                      const archivos = Array.isArray(loteData.archivos) ? loteData.archivos : []
+                      if (!showOnlyPending) return Math.min(archivos.length - 1, prev + 1)
+                      for (let j = prev + 1; j < archivos.length; j++) {
+                        if (archivos[j] && archivos[j].estado === 'pendiente') return j
+                      }
+                      return prev
+                    })}
                     onRestart={() => setCurrentIndex(0)}
                     onFinalize={() => setShowFinalizeConfirm(true)}
                     showFinalize={((loteData.archivos || []).filter((f:any)=>f.estado==='pendiente').length === 0)}
+                    t={t}
                   />
                 </div>
               )}
@@ -795,19 +1059,34 @@ export default function App() {
                 <div className="mt-4">
                   {(() => {
                     const archivos = Array.isArray(loteData.archivos) ? loteData.archivos : []
+                    // When showing only pendientes, compute position among pendientes
+                    if (showOnlyPending) {
+                      const pendientes = archivos.filter((f: any) => f.estado === 'pendiente')
+                      const totalPending = pendientes.length || 0
+                      const currentArchivo = archivos[currentIndex]
+                      const idx = currentArchivo ? pendientes.findIndex((p: any) => p.orden === currentArchivo.orden) : -1
+                      const currentPos = totalPending ? Math.min(Math.max(idx + 1, 0), totalPending) : 0
+                      const pctFile = totalPending ? Math.round((currentPos / totalPending) * 100) : 0
+                      return (
+                        <div className="w-full flex items-center gap-3">
+                          <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div className="bg-indigo-500 h-3 rounded-full" style={{ width: `${pctFile}%` }} />
+                          </div>
+                          <div className="w-24 text-sm text-gray-600 text-right">{totalPending ? `${currentPos}/${totalPending}` : ''}</div>
+                        </div>
+                      )
+                    }
+
+                    // Default: show position within all files
                     const totalFiles = archivos.length || 0
                     const currentPos = totalFiles ? Math.min(currentIndex + 1, totalFiles) : 0
-                    const reviewedCount = archivos.filter((f:any) => f.estado !== 'pendiente').length
-                    // Use the greatest value between navigation position and reviewed files
-                    // to avoid off-by-one behavior on the final item.
-                    const progressCount = totalFiles ? Math.min(totalFiles, Math.max(currentPos, reviewedCount)) : 0
-                    const pctFile = totalFiles ? Math.round((progressCount / totalFiles) * 100) : 0
+                    const pctFile = totalFiles ? Math.round((currentPos / totalFiles) * 100) : 0
                     return (
                       <div className="w-full flex items-center gap-3">
                         <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
                           <div className="bg-indigo-500 h-3 rounded-full" style={{ width: `${pctFile}%` }} />
                         </div>
-                        <div className="w-24 text-sm text-gray-600 text-right">{totalFiles ? `${progressCount}/${totalFiles}` : ''}</div>
+                        <div className="w-24 text-sm text-gray-600 text-right">{totalFiles ? `${currentPos}/${totalFiles}` : ''}</div>
                       </div>
                     )
                   })()}
@@ -843,8 +1122,8 @@ export default function App() {
                   }))
 
                   const displayed: any[] = [...persisted, ...liveNormalized]
-                  if (!displayed || displayed.length === 0) {
-                    return <div className="text-gray-600 italic">Esperando eventos...</div>
+                    if (!displayed || displayed.length === 0) {
+                    return <div className="text-gray-600 italic">{t('waitingEvents')}</div>
                   }
                   const deduped = displayed.filter((e: any, idx: number, arr: any[]) => {
                     const id = e?.id || `${e?.action || e?.type}|${e?.timestamp || e?.ts}|${e?.payload?.loteId || ''}|${e?.payload?.fileName || ''}`
@@ -887,18 +1166,12 @@ export default function App() {
       <div className="fixed bottom-6 right-6">
         <button
           onClick={() => {
-            setShowLogs(s => {
-              const newV = !s
-              try {
-                if (rootPath) appendAppLog(rootPath, { type: 'button:toggleLogs', data: { visible: newV } }).catch(() => {})
-                try { if (rootPath) readAppLog(rootPath).then((res:any)=>{ if(res?.ok) setAppEvents(res.entries||[]) }).catch(()=>{}) } catch(_) {}
-              } catch (_) {}
-              return newV
-            })
+            // Toggle logs visibility without persisting this action to disk
+            setShowLogs(s => !s)
           }}
           className={`shadow-lg px-4 py-2 rounded-full font-semibold text-sm transition-colors border ${showLogs ? 'bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
         >
-          {showLogs ? 'Ocultar logs técnicos' : '🛠️ Ver detalles técnicos'}
+          {showLogs ? t('hideLogs') : t('showLogs')}
         </button>
       </div>
 
@@ -908,6 +1181,7 @@ export default function App() {
         defaultConfig={pendingUsuarioConfig}
         onCancel={() => setModalVisible(false)}
         onSelectFolder={selectFolder}
+        t={t}
         onConfirm={async (usuarioConfig: any) => {
           setModalVisible(false)
           setPendingUsuarioConfig(usuarioConfig)
@@ -921,8 +1195,8 @@ export default function App() {
         <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6 text-center">
             <div className="w-14 h-14 mx-auto mb-4 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Creando lotes...</h3>
-            <p className="text-sm text-gray-500 mb-4">Estamos organizando los archivos antes de continuar.</p>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">{t('creatingLotsTitle')}</h3>
+            <p className="text-sm text-gray-500 mb-4">{t('creatingLotsMessage')}</p>
 
             <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden mb-3">
               <div className="bg-indigo-600 h-4 rounded-full transition-all duration-200" style={{ width: `${createLotesProgress.percent}%` }} />
@@ -947,6 +1221,7 @@ export default function App() {
         loteId={loteStats?.id || '?'}
         stats={loteStats}
         onContinue={() => setLoteStats(null)}
+        t={t}
       />
 
       <GlobalSummaryModal
@@ -980,38 +1255,63 @@ export default function App() {
           setSimplePreview(null)
           autoOpenFinalOnceRef.current = false
         }}
+        t={t}
       />
 
       {/* Finalize confirmation modal (two-step: counts -> sizes) */}
       {showFinalizeConfirm && loteData && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
-            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-            </div>
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">{t('wantAdvance')}</h3>
+            <p className="text-sm text-gray-500 mb-4">{t('advanceWarning', { what: loteData.tipo === 'videos' ? t('videos') : t('images') })}</p>
 
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">Confirmar cierre de lote</h3>
-            <p className="text-sm text-gray-500 mb-6">¿Estás seguro de finalizar el lote?</p>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-red-50 rounded-xl p-4">
-                <span className="block text-2xl font-bold text-red-700">{(loteData.archivos || []).filter((f:any)=>f.estado==='eliminar').length}</span>
-                <span className="text-xs uppercase tracking-wider font-semibold text-red-600">Eliminar</span>
-              </div>
-              <div className="bg-green-50 rounded-xl p-4">
-                <span className="block text-2xl font-bold text-green-700">{(loteData.archivos || []).filter((f:any)=>f.estado==='conservar').length}</span>
-                <span className="text-xs uppercase tracking-wider font-semibold text-green-600">Conservar</span>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowFinalizeConfirm(false)} className="px-4 py-2 rounded-lg border">Cancelar</button>
+            <div className="flex justify-center gap-6 mb-6">
+              <button onClick={() => { skipAutoOpenRef.current = loteData?.lote_id || null; setShowFinalizeConfirm(false) }} className="px-4 py-2 rounded-lg border">{t('no')}</button>
               <button onClick={async () => {
                 try { if (rootPath && loteData) appendAppLog(rootPath, { type: 'button:confirmClose', data: { loteId: loteData.lote_id } }).catch(() => {}) } catch (_) {}
                 try { if (rootPath) readAppLog(rootPath).then((res:any)=>{ if(res?.ok) setAppEvents(res.entries||[]) }).catch(()=>{}) } catch(_) {}
-                await handleCloseLote();
+                await handleCloseLote(true);
                 setShowFinalizeConfirm(false)
-              }} className="px-4 py-2 rounded-lg bg-indigo-600 text-white">Confirmar cierre</button>
+              }} className="px-4 py-2 rounded-lg bg-indigo-600 text-white">{t('yes')}</button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-5 mb-2">
+              <div className="bg-red-50 rounded-xl p-6 flex flex-col items-center h-12 justify-center overflow-hidden">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold leading-tight text-red-700">{(loteData.archivos || []).filter((f:any)=>f.estado==='eliminar').length}</span>
+                  <span className="text-[15px] uppercase tracking-wider font-semibold text-red-600">{t('eliminar')}</span>
+                </div>
+                <div className="text-[12px] font-bold text-gray-600 mt-0">{(() => {
+                  const bytes = (loteData.archivos || []).filter((f:any)=>f.estado==='eliminar').reduce((s:number,f:any)=>s + (f.tamano_bytes || 0), 0)
+                  if (!bytes && bytes !== 0) return ''
+                  const b = Number(bytes || 0)
+                  if (b < 1024) return `${b} B`
+                  const kb = b / 1024
+                  if (kb < 1024) return `${kb.toFixed(1)} KB`
+                  const mb = kb / 1024
+                  if (mb < 1024) return `${mb.toFixed(1)} MB`
+                  const gb = mb / 1024
+                  return `${gb.toFixed(2)} GB`
+                })()}</div>
+              </div>
+              <div className="bg-green-100 rounded-xl p-6 flex flex-col items-center h-12 justify-center overflow-hidden">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold leading-tight text-green-700">{(loteData.archivos || []).filter((f:any)=>f.estado==='conservar').length}</span>
+                  <span className="text-[15px] uppercase tracking-wider font-semibold text-green-600">{t('conservar')}</span>
+                </div>
+                <div className="text-[12px] font-bold text-gray-600 mt-0">{(() => {
+                  const bytes = (loteData.archivos || []).filter((f:any)=>f.estado==='conservar').reduce((s:number,f:any)=>s + (f.tamano_bytes || 0), 0)
+                  if (!bytes && bytes !== 0) return ''
+                  const b = Number(bytes || 0)
+                  if (b < 1024) return `${b} B`
+                  const kb = b / 1024
+                  if (kb < 1024) return `${kb.toFixed(1)} KB`
+                  const mb = kb / 1024
+                  if (mb < 1024) return `${mb.toFixed(1)} MB`
+                  const gb = mb / 1024
+                  return `${gb.toFixed(2)} GB`
+                })()}</div>
+              </div>
             </div>
           </div>
         </div>

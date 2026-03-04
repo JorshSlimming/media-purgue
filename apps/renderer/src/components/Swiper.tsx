@@ -13,9 +13,10 @@ type Props = {
   onRestart?: () => void
   onFinalize?: () => void
   showFinalize?: boolean
+  t?: (key: string, vars?: Record<string,string>) => string
 }
 
-export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onPrev, onNext, onRestart, onFinalize, showFinalize }: Props) {
+export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onPrev, onNext, onRestart, onFinalize, showFinalize, t }: Props) {
   const isVideo = /\.(mp4|mov|webm|mkv|avi)$/i.test(file.nombre)
   const mediaSrc = `media://local/file?path=${encodeURIComponent(file.ruta_original)}`
   const [videoReady, setVideoReady] = useState(!isVideo)
@@ -124,7 +125,7 @@ export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onP
             <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
               <div className="bg-black/60 text-white rounded-md px-4 py-3 flex items-center gap-3">
                 <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
-                <span>Cargando video… espera antes de marcar</span>
+                <span>{(t || ((k:string)=>k))('loadingVideo')}</span>
               </div>
             </div>
           )}
@@ -133,13 +134,13 @@ export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onP
           {prevFile && !/\.(mp4|mov|webm|mkv|avi)$/i.test(prevFile.nombre) && (
             <button onClick={() => { try { onPrev && onPrev() } catch {} }} title={prevFile.nombre} className={"hidden lg:flex absolute left-4 bottom-6 w-32 h-40 bg-black/60 rounded-md overflow-hidden flex-col items-center justify-start border border-white/10 z-20"}>
               <img src={"media://local/file?path=" + encodeURIComponent(prevFile.ruta_original || '')} alt={prevFile.nombre} className="w-full h-28 object-contain opacity-100" />
-              <span className="text-xs text-white/90 mt-1">Anterior</span>
+              <span className="text-xs text-white/90 mt-1">{(t || ((k:string)=>k))('prev')}</span>
             </button>
           )}
           {nextFile && !/\.(mp4|mov|webm|mkv|avi)$/i.test(nextFile.nombre) && (
             <button onClick={() => { try { onNext && onNext() } catch {} }} title={nextFile.nombre} className={"hidden lg:flex absolute right-4 bottom-6 w-32 h-40 bg-black/60 rounded-md overflow-hidden flex-col items-center justify-start border border-white/10 z-20"}>
               <img src={"media://local/file?path=" + encodeURIComponent(nextFile.ruta_original || '')} alt={nextFile.nombre} className="w-full h-28 object-contain opacity-100" />
-              <span className="text-xs text-white/90 mt-1">Siguiente</span>
+              <span className="text-xs text-white/90 mt-1">{(t || ((k:string)=>k))('next')}</span>
             </button>
           )}
 
@@ -203,7 +204,7 @@ export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onP
               className={`hidden lg:block absolute left-[-240px] top-[72%] translate-y-0 px-10 py-4 text-white text-lg font-bold rounded-full z-50 transition-transform ${isDeleted ? 'bg-red-800 scale-[0.97] shadow-inner translate-y-1 ring-4 ring-red-300/30' : 'bg-red-600 hover:bg-red-700 shadow-2xl'} ${actionsDisabled ? 'opacity-60 pointer-events-none' : ''}`}
               style={{ boxShadow: isDeleted ? 'inset 0 4px 8px rgba(0,0,0,0.25)' : '0 16px 40px rgba(220,38,38,0.25)' }}
             >
-              Eliminar
+              {(t || ((k:string)=>k))('deleteLabel')}
             </button>
           )
         })()}
@@ -218,38 +219,19 @@ export default function Swiper({ file, prevFile, nextFile, onKeep, onDelete, onP
               className={`hidden lg:block absolute right-[-240px] top-[72%] translate-y-0 px-10 py-4 text-white text-lg font-bold rounded-full z-50 transition-transform ${isKept ? 'bg-green-800 scale-[0.97] shadow-inner translate-y-1 ring-4 ring-green-300/30' : 'bg-green-600 hover:bg-green-700 shadow-2xl'} ${actionsDisabled ? 'opacity-60 pointer-events-none' : ''}`}
               style={{ boxShadow: isKept ? 'inset 0 4px 8px rgba(0,0,0,0.22)' : '0 16px 40px rgba(34,197,94,0.22)' }}
             >
-              Conservar
+              {(t || ((k:string)=>k))('keepLabel')}
             </button>
           )
         })()}
 
-        {/* Reiniciar (al llegar al final del lote) - espejo vertical de Eliminar */}
-        {(!nextFile) && (
-          <button
-            onClick={() => { try { onRestart && onRestart() } catch {} }}
-            title="Volver a Revisar"
-            className={"hidden lg:block absolute left-[-240px] top-[8%] px-6 py-2 text-white text-sm font-semibold rounded-full z-50 bg-blue-600 hover:bg-blue-700 shadow-md whitespace-nowrap"}
-          >
-            Volver a Revisar
-          </button>
-        )}
+        {/* Reiniciar button removed per UX — 'Volver a Revisar' no longer used */}
 
-        {/* Finalizar Lote: colocado en espejo vertical respecto a Conservar */}
-        {showFinalize && (
-          <button
-            onClick={() => { try { onFinalize && onFinalize() } catch {} }}
-            title="Finalizar Lote"
-            className={"hidden lg:block absolute right-[-240px] top-[8%] px-6 py-2 text-white text-sm font-semibold rounded-full z-50 bg-indigo-600 hover:bg-indigo-700 shadow-md whitespace-nowrap"}
-          >
-            Finalizar Lote
-          </button>
-        )}
+        {/* Finalizar Lote removed from Swiper - control moved to App header */}
 
         {/* Bottom action bar for narrower windows */}
         <div className="lg:hidden w-full flex items-center justify-center gap-4 py-3 bg-white">
-          <button onClick={() => { if (!(isVideo && !videoReady)) onDelete() }} className="flex-1 py-2 bg-red-600 text-white rounded-lg font-semibold">Eliminar</button>
-          <button onClick={() => { if (!(isVideo && !videoReady)) onKeep() }} className="flex-1 py-2 bg-green-600 text-white rounded-lg font-semibold">Conservar</button>
-          {showFinalize && <button onClick={() => { try { onFinalize && onFinalize() } catch {} }} className="py-2 px-3 bg-indigo-600 text-white rounded-lg font-semibold">Finalizar</button>}
+          <button onClick={() => { if (!(isVideo && !videoReady)) onDelete() }} className="flex-1 py-2 bg-red-600 text-white rounded-lg font-semibold">{(t || ((k:string)=>k))('deleteLabel')}</button>
+          <button onClick={() => { if (!(isVideo && !videoReady)) onKeep() }} className="flex-1 py-2 bg-green-600 text-white rounded-lg font-semibold">{(t || ((k:string)=>k))('keepLabel')}</button>
         </div>
       </div>
 
