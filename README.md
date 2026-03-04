@@ -7,6 +7,12 @@ Electron + React app to review and clean large photo/video collections via batch
 [![React](https://img.shields.io/badge/React-18.0.0-61DAFB?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0.0-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 
+## Demo
+
+Try the interactive web demo: **[media-purgue.github.io](https://media-purgue.github.io)**
+
+The web demo simulates the complete user interface and workflow without requiring Electron or accessing real files.
+
 ## Quick start
 
 ```bash
@@ -127,6 +133,7 @@ media-purgue/
 │   ├── project-overview.md # Full project spec
 │   ├── json-contracts.md   # JSON format specifications
 │   └── samples/            # Example JSON files
+├── web-demo/               # Web demo (React + Vite)
 └── scripts/                # Build and utility scripts
 ```
 
@@ -185,6 +192,39 @@ npm run test:e2e
 - `docs/json-contracts.md` - JSON format specifications
 - `docs/dev-windows.md` - Windows-specific development notes
 - `docs/samples/` - Example JSON files
+
+## Web Demo
+
+The web demo is located in the `web-demo/` folder. It provides an interactive visual simulation of the application without requiring Electron.
+
+### Running the demo locally
+
+```bash
+cd web-demo
+npm install
+npm run dev
+```
+
+The demo will be available at `http://localhost:5174/`
+
+### Building for production
+
+```bash
+cd web-demo
+npm run build
+```
+
+The built files will be in `web-demo/dist/`
+
+### Deploying to GitHub Pages
+
+```bash
+cd web-demo
+npm run build
+git subtree push --prefix dist origin gh-pages
+```
+
+The demo will be available at `https://<username>.github.io/media-purgue/`
 
 ## License
 
