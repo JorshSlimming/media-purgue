@@ -9,7 +9,7 @@ Electron + React app to review and clean large photo/video collections via batch
 
 ## Demo
 
-Try the interactive web demo: **[media-purgue.github.io](https://media-purgue.github.io)**
+Try the interactive web demo: **[media-purgue.github.io](https://jorshslimming.github.io/media-purgue/)**
 
 The web demo simulates the complete user interface and workflow without requiring Electron or accessing real files.
 
